@@ -246,7 +246,8 @@ textarea {
   cursor: pointer;
 }
 
-.prompt-section {
+.prompt-section,
+.model-section {
   margin-top: 20px;
 }
 

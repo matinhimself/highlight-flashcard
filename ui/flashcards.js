@@ -48,8 +48,8 @@ async function init() {
   // Set up event listeners
   setupEventListeners();
 
-  // Load flashcards
-  await loadFlashcards();
+  // Load flashcards with loading indicator
+  await loadFlashcards(true);
 }
 
 /**
@@ -116,12 +116,37 @@ function setupEventListeners() {
 /**
  * Load flashcards from storage
  */
-async function loadFlashcards() {
+async function loadFlashcards(showLoading = false) {
+  if (showLoading) {
+    showSkeletonCards();
+  }
+
   allFlashcards = await Storage.getFlashcards();
   filteredFlashcards = [...allFlashcards];
 
   updateCount();
   renderFlashcards();
+}
+
+/**
+ * Show skeleton loading cards
+ */
+function showSkeletonCards() {
+  flashcardsList.innerHTML = '';
+  emptyState.classList.add('hidden');
+
+  for (let i = 0; i < 3; i++) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'flashcard skeleton-card';
+    skeleton.innerHTML = `
+      <div class="flashcard-header">
+        <div class="flashcard-word skeleton"></div>
+      </div>
+      <div class="flashcard-definition skeleton"></div>
+      <div class="flashcard-meta skeleton"></div>
+    `;
+    flashcardsList.appendChild(skeleton);
+  }
 }
 
 /**
@@ -396,17 +421,39 @@ async function saveEdit() {
     return;
   }
 
-  const success = await Storage.updateFlashcard(currentEditingId, {
-    word,
-    definition,
-    sourceUrl
-  });
+  // Show loading state
+  const saveButton = document.getElementById('saveEdit');
+  const cancelButton = document.getElementById('cancelEdit');
+  const inputs = [
+    document.getElementById('editWord'),
+    document.getElementById('editDefinition'),
+    document.getElementById('editSource')
+  ];
 
-  if (success) {
-    closeEditModal();
-    await loadFlashcards();
-  } else {
-    alert('Failed to save changes');
+  saveButton.classList.add('loading');
+  saveButton.disabled = true;
+  cancelButton.disabled = true;
+  inputs.forEach(input => input.disabled = true);
+
+  try {
+    const success = await Storage.updateFlashcard(currentEditingId, {
+      word,
+      definition,
+      sourceUrl
+    });
+
+    if (success) {
+      closeEditModal();
+      await loadFlashcards();
+    } else {
+      alert('Failed to save changes');
+    }
+  } finally {
+    // Reset loading state
+    saveButton.classList.remove('loading');
+    saveButton.disabled = false;
+    cancelButton.disabled = false;
+    inputs.forEach(input => input.disabled = false);
   }
 }
 
@@ -441,13 +488,28 @@ function closeDeleteModal() {
 async function confirmDelete() {
   if (!currentDeletingId) return;
 
-  const success = await Storage.deleteFlashcard(currentDeletingId);
+  // Show loading state
+  const deleteButton = document.getElementById('confirmDelete');
+  const cancelButton = document.getElementById('cancelDelete');
 
-  if (success) {
-    closeDeleteModal();
-    await loadFlashcards();
-  } else {
-    alert('Failed to delete flashcard');
+  deleteButton.classList.add('loading');
+  deleteButton.disabled = true;
+  cancelButton.disabled = true;
+
+  try {
+    const success = await Storage.deleteFlashcard(currentDeletingId);
+
+    if (success) {
+      closeDeleteModal();
+      await loadFlashcards();
+    } else {
+      alert('Failed to delete flashcard');
+    }
+  } finally {
+    // Reset loading state
+    deleteButton.classList.remove('loading');
+    deleteButton.disabled = false;
+    cancelButton.disabled = false;
   }
 }
 

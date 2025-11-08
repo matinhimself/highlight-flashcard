@@ -96,12 +96,16 @@ async function createFlashcard(selectedText, sourceUrl) {
     ? Storage.getDefaultPrompt()
     : settings.customPrompt || Storage.getDefaultPrompt();
 
-  // Show processing notification
+  // Show processing notification and badge
   showNotification(
     'Creating Flashcard',
     `Creating flashcard for "${truncateText(word, 30)}"...`,
     'info'
   );
+
+  // Show loading badge
+  chrome.action.setBadgeText({ text: '...' });
+  chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
 
   try {
     // Create API client and generate definition
@@ -135,6 +139,9 @@ async function createFlashcard(selectedText, sourceUrl) {
       'success'
     );
 
+    // Clear badge
+    chrome.action.setBadgeText({ text: '' });
+
     console.log('Flashcard created:', flashcard);
   } catch (error) {
     console.error('Error creating flashcard:', error);
@@ -145,6 +152,9 @@ async function createFlashcard(selectedText, sourceUrl) {
       `Failed to create flashcard: ${error.message}`,
       'error'
     );
+
+    // Clear badge
+    chrome.action.setBadgeText({ text: '' });
   }
 }
 

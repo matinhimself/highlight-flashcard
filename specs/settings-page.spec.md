@@ -28,18 +28,38 @@ A dedicated settings page where users can configure the extension's behavior, AP
 - **Help Text**: "Get your API key from [openrouter.ai/keys](https://openrouter.ai/keys)"
 - **Test Button**: "Test Connection" (validates API key)
 
-#### Model Selection
+#### Model Selection Mode
+- **Element**: Radio buttons
+- **Label**: "AI Model Selection"
+- **Options**:
+  - "Select from list" (default)
+  - "Enter custom model ID"
+- **Default**: Select from list
+
+#### Preset Model Selection
 - **Element**: Dropdown select
-- **Label**: "AI Model"
+- **Label**: "Choose Model"
 - **Options**:
   - Anthropic Claude 3.5 Sonnet (Recommended)
   - Anthropic Claude 3 Haiku (Faster, cheaper)
   - OpenAI GPT-4 Turbo
   - OpenAI GPT-3.5 Turbo
+  - xAI Grok Beta (Fast)
   - Meta Llama 3.1 8B
   - Google Gemini Pro
 - **Default**: Claude 3.5 Sonnet
 - **Help Text**: "Different models have different costs and capabilities"
+- **Visibility**: When "Select from list" is selected
+
+#### Custom Model ID Input
+- **Element**: Text input
+- **Label**: "Custom Model ID"
+- **Placeholder**: "e.g., anthropic/claude-3-opus or openai/gpt-4"
+- **Validation**:
+  - Not empty when custom model is selected
+  - Warn if doesn't contain "/" (format: provider/model-name)
+- **Help Text**: "Enter any OpenRouter model ID. See [available models](https://openrouter.ai/models)"
+- **Visibility**: When "Enter custom model ID" is selected
 
 ### 2. Prompt Configuration Section
 

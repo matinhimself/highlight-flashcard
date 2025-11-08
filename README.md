@@ -93,6 +93,19 @@ The extension supports multiple AI models through OpenRouter:
 
 **Note**: Different models have different pricing. Check [OpenRouter pricing](https://openrouter.ai/models) for current rates.
 
+### Custom Models
+
+You can also use any other model available on OpenRouter by selecting "Enter custom model ID" in the settings:
+
+1. Go to [OpenRouter Models](https://openrouter.ai/models)
+2. Find the model you want to use
+3. Copy the model ID (e.g., `anthropic/claude-3-opus`, `openai/gpt-4`)
+4. In extension settings, select "Enter custom model ID"
+5. Paste the model ID
+6. Test the connection to verify it works
+
+This allows you to use newly released models without waiting for an extension update.
+
 ## Default Prompt
 
 The extension uses this default prompt for generating definitions:
