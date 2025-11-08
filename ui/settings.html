@@ -164,6 +164,18 @@
         </div>
       </section>
 
+      <!-- Describe Prompts Section -->
+      <section class="settings-section">
+        <h2>Describe Prompts</h2>
+        <p class="help-text">Manage AI prompts for the "Describe" context menu feature</p>
+
+        <div id="describePromptsList" class="prompts-list">
+          <!-- Prompts will be loaded dynamically -->
+        </div>
+
+        <button id="addDescribePrompt" class="button secondary">+ Add New Describe Prompt</button>
+      </section>
+
       <!-- Actions -->
       <section class="settings-section actions">
         <button id="saveSettings" class="button primary" disabled>Save Settings</button>
@@ -175,10 +187,42 @@
         <h2>Storage Information</h2>
         <div class="storage-info">
           <p><strong>Flashcards:</strong> <span id="flashcardCount">0</span></p>
+          <p><strong>Highlights:</strong> <span id="highlightsCount">0</span></p>
           <p><strong>Storage Used:</strong> <span id="storageUsed">0</span> / 5 MB</p>
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- Describe Prompt Modal -->
+  <div id="describePromptModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="promptModalTitle">Add Describe Prompt</h2>
+        <button class="close-btn" id="closePromptModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="promptName">Prompt Name</label>
+          <input type="text" id="promptName" placeholder="e.g., Software Engineer, Scientist, Teacher" />
+        </div>
+        <div class="form-group">
+          <label for="promptText">Prompt Text</label>
+          <textarea id="promptText" rows="12" placeholder="Enter the AI prompt that will be used to describe selected text..."></textarea>
+          <p class="help-text">This prompt will be used when describing selected text with AI.</p>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="promptEnabled" checked />
+            <span>Enable this prompt in context menu</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelPrompt" class="button secondary">Cancel</button>
+        <button id="savePrompt" class="button primary">Save Prompt</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="settings.js"></script>

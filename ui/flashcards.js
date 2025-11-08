@@ -9,11 +9,13 @@ let flashcardCount;
 let searchInput;
 let clearSearchBtn;
 let sortSelect;
+let exportBtn;
 let emptyState;
 let flashcardsList;
 let loadMoreContainer;
 let loadMoreBtn;
 let settingsBtn;
+let highlightsBtn;
 let emptySettingsBtn;
 let editModal;
 let deleteModal;
@@ -36,11 +38,13 @@ async function init() {
   searchInput = document.getElementById('searchInput');
   clearSearchBtn = document.getElementById('clearSearch');
   sortSelect = document.getElementById('sortSelect');
+  exportBtn = document.getElementById('exportBtn');
   emptyState = document.getElementById('emptyState');
   flashcardsList = document.getElementById('flashcardsList');
   loadMoreContainer = document.getElementById('loadMoreContainer');
   loadMoreBtn = document.getElementById('loadMoreBtn');
   settingsBtn = document.getElementById('settingsBtn');
+  highlightsBtn = document.getElementById('highlightsBtn');
   emptySettingsBtn = document.getElementById('emptySettingsBtn');
   editModal = document.getElementById('editModal');
   deleteModal = document.getElementById('deleteModal');
@@ -48,8 +52,8 @@ async function init() {
   // Set up event listeners
   setupEventListeners();
 
-  // Load flashcards
-  await loadFlashcards();
+  // Load flashcards with loading indicator
+  await loadFlashcards(true);
 }
 
 /**
@@ -67,8 +71,10 @@ function setupEventListeners() {
   // Sort
   sortSelect.addEventListener('change', handleSort);
 
-  // Settings buttons
+  exportBtn.addEventListener('click', exportToAnki);
+
   settingsBtn.addEventListener('click', openSettings);
+  highlightsBtn.addEventListener('click', openHighlights);
   emptySettingsBtn.addEventListener('click', openSettings);
 
   // Load more
@@ -116,12 +122,37 @@ function setupEventListeners() {
 /**
  * Load flashcards from storage
  */
-async function loadFlashcards() {
+async function loadFlashcards(showLoading = false) {
+  if (showLoading) {
+    showSkeletonCards();
+  }
+
   allFlashcards = await Storage.getFlashcards();
   filteredFlashcards = [...allFlashcards];
 
   updateCount();
   renderFlashcards();
+}
+
+/**
+ * Show skeleton loading cards
+ */
+function showSkeletonCards() {
+  flashcardsList.innerHTML = '';
+  emptyState.classList.add('hidden');
+
+  for (let i = 0; i < 3; i++) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'flashcard skeleton-card';
+    skeleton.innerHTML = `
+      <div class="flashcard-header">
+        <div class="flashcard-word skeleton"></div>
+      </div>
+      <div class="flashcard-definition skeleton"></div>
+      <div class="flashcard-meta skeleton"></div>
+    `;
+    flashcardsList.appendChild(skeleton);
+  }
 }
 
 /**
@@ -395,6 +426,13 @@ function openSettings() {
 }
 
 /**
+ * Open highlights page
+ */
+function openHighlights() {
+  window.location.href = 'highlights.html';
+}
+
+/**
  * Open edit modal
  * @param {string} id - Flashcard ID
  */
@@ -437,17 +475,39 @@ async function saveEdit() {
     return;
   }
 
-  const success = await Storage.updateFlashcard(currentEditingId, {
-    word,
-    definition,
-    sourceUrl
-  });
+  // Show loading state
+  const saveButton = document.getElementById('saveEdit');
+  const cancelButton = document.getElementById('cancelEdit');
+  const inputs = [
+    document.getElementById('editWord'),
+    document.getElementById('editDefinition'),
+    document.getElementById('editSource')
+  ];
 
-  if (success) {
-    closeEditModal();
-    await loadFlashcards();
-  } else {
-    alert('Failed to save changes');
+  saveButton.classList.add('loading');
+  saveButton.disabled = true;
+  cancelButton.disabled = true;
+  inputs.forEach(input => input.disabled = true);
+
+  try {
+    const success = await Storage.updateFlashcard(currentEditingId, {
+      word,
+      definition,
+      sourceUrl
+    });
+
+    if (success) {
+      closeEditModal();
+      await loadFlashcards();
+    } else {
+      alert('Failed to save changes');
+    }
+  } finally {
+    // Reset loading state
+    saveButton.classList.remove('loading');
+    saveButton.disabled = false;
+    cancelButton.disabled = false;
+    inputs.forEach(input => input.disabled = false);
   }
 }
 
@@ -482,14 +542,171 @@ function closeDeleteModal() {
 async function confirmDelete() {
   if (!currentDeletingId) return;
 
-  const success = await Storage.deleteFlashcard(currentDeletingId);
+  // Show loading state
+  const deleteButton = document.getElementById('confirmDelete');
+  const cancelButton = document.getElementById('cancelDelete');
 
-  if (success) {
-    closeDeleteModal();
-    await loadFlashcards();
-  } else {
-    alert('Failed to delete flashcard');
+  deleteButton.classList.add('loading');
+  deleteButton.disabled = true;
+  cancelButton.disabled = true;
+
+  try {
+    const success = await Storage.deleteFlashcard(currentDeletingId);
+
+    if (success) {
+      closeDeleteModal();
+      await loadFlashcards();
+    } else {
+      alert('Failed to delete flashcard');
+    }
+  } finally {
+    // Reset loading state
+    deleteButton.classList.remove('loading');
+    deleteButton.disabled = false;
+    cancelButton.disabled = false;
   }
+}
+
+/**
+ * Export flashcards to Anki-compatible text format
+ */
+async function exportToAnki() {
+  // Check if there are flashcards to export
+  if (allFlashcards.length === 0) {
+    alert('No flashcards to export. Create some flashcards first!');
+    return;
+  }
+
+  // Show loading state
+  exportBtn.classList.add('loading');
+  exportBtn.disabled = true;
+
+  try {
+    // Get flashcards (use filtered if search/sort is active, otherwise all)
+    const cardsToExport = filteredFlashcards.length > 0 ? filteredFlashcards : allFlashcards;
+
+    // Create Anki-compatible text format (tab-separated)
+    // Format: Front\tBack
+    // Anki will create a Basic note type with these two fields
+    const ankiText = cardsToExport.map(card => {
+      // Front: The word/phrase
+      const front = card.word;
+
+      // Back: Definition with source URL
+      // We include the source URL as additional context
+      const back = `${card.definition}\n\n<div style="font-size: 0.8em; color: #666; margin-top: 10px;">Source: <a href="${card.sourceUrl}">${extractDomain(card.sourceUrl)}</a></div>`;
+
+      // Escape tabs and newlines in the data
+      // Replace actual tabs with spaces
+      const escapedFront = front.replace(/\t/g, ' ');
+      // For the back, we keep newlines as <br> for HTML rendering in Anki
+      const escapedBack = back.replace(/\t/g, ' ');
+
+      return `${escapedFront}\t${escapedBack}`;
+    }).join('\n');
+
+    // Add header comment with instructions
+    const header = `# Anki Import File - Highlight Flashcard Extension
+# Generated on ${new Date().toLocaleString()}
+# Total cards: ${cardsToExport.length}
+#
+# Instructions:
+# 1. Open Anki
+# 2. Go to File > Import
+# 3. Select this file
+# 4. Set field separator to "Tab"
+# 5. Make sure "Allow HTML in fields" is checked
+# 6. Map fields: Field 1 -> Front, Field 2 -> Back
+# 7. Click Import
+#
+# Fields: Front\tBack
+#separator:tab
+#html:true
+#deck:Highlight Flashcards
+#notetype:Basic
+#tags:highlight-flashcard
+
+`;
+
+    const fullContent = header + ankiText;
+
+    // Create filename with timestamp
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `highlight-flashcards-${timestamp}.txt`;
+
+    // Download the file
+    downloadTextFile(fullContent, filename);
+
+    // Show success message
+    showNotification('success', `Successfully exported ${cardsToExport.length} flashcard${cardsToExport.length > 1 ? 's' : ''} to Anki format!`);
+  } catch (error) {
+    console.error('Export error:', error);
+    alert('Failed to export flashcards. Please try again.');
+  } finally {
+    // Reset loading state
+    exportBtn.classList.remove('loading');
+    exportBtn.disabled = false;
+  }
+}
+
+/**
+ * Download text content as a file
+ * @param {string} content - File content
+ * @param {string} filename - File name
+ */
+function downloadTextFile(content, filename) {
+  // Create a blob with UTF-8 encoding
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+
+  // Create a temporary download link
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+
+  // Trigger download
+  document.body.appendChild(link);
+  link.click();
+
+  // Cleanup
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Show a temporary notification
+ * @param {string} type - Notification type ('success' or 'error')
+ * @param {string} message - Notification message
+ */
+function showNotification(type, message) {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    background: ${type === 'success' ? 'var(--success-color)' : 'var(--danger-color)'};
+    color: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    animation: slideIn 0.3s ease;
+    max-width: 300px;
+  `;
+
+  // Add to DOM
+  document.body.appendChild(notification);
+
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => {
+      document.body.removeChild(notification);
+    }, 300);
+  }, 3000);
 }
 
 // Initialize when DOM is ready

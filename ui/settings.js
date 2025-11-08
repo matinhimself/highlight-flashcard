@@ -34,11 +34,23 @@ let testConnectionBtn;
 let connectionStatus;
 let notification;
 let flashcardCount;
+let highlightsCount;
 let storageUsed;
+let describePromptsList;
+let addDescribePromptBtn;
+let describePromptModal;
+let promptModalTitle;
+let promptNameInput;
+let promptTextInput;
+let promptEnabledCheckbox;
+let savePromptBtn;
+let cancelPromptBtn;
+let closePromptModalBtn;
 
 // State
 let isDirty = false;
 let originalSettings = null;
+let currentEditingPromptId = null;
 
 /**
  * Initialize the settings page
@@ -74,7 +86,18 @@ async function init() {
   connectionStatus = document.getElementById('connectionStatus');
   notification = document.getElementById('notification');
   flashcardCount = document.getElementById('flashcardCount');
+  highlightsCount = document.getElementById('highlightsCount');
   storageUsed = document.getElementById('storageUsed');
+  describePromptsList = document.getElementById('describePromptsList');
+  addDescribePromptBtn = document.getElementById('addDescribePrompt');
+  describePromptModal = document.getElementById('describePromptModal');
+  promptModalTitle = document.getElementById('promptModalTitle');
+  promptNameInput = document.getElementById('promptName');
+  promptTextInput = document.getElementById('promptText');
+  promptEnabledCheckbox = document.getElementById('promptEnabled');
+  savePromptBtn = document.getElementById('savePrompt');
+  cancelPromptBtn = document.getElementById('cancelPrompt');
+  closePromptModalBtn = document.getElementById('closePromptModal');
 
   // Set up event listeners
   setupEventListeners();
@@ -84,6 +107,9 @@ async function init() {
 
   // Load storage stats
   await loadStorageStats();
+
+  // Load describe prompts
+  await loadDescribePrompts();
 
   // Show default prompt and schema
   defaultPromptPreview.textContent = Storage.getDefaultPrompt();
@@ -156,6 +182,26 @@ function setupEventListeners() {
   // Test connection
   testConnectionBtn.addEventListener('click', testConnection);
 
+  // Describe prompts
+  addDescribePromptBtn.addEventListener('click', openAddPromptModal);
+  savePromptBtn.addEventListener('click', saveDescribePrompt);
+  cancelPromptBtn.addEventListener('click', closePromptModal);
+  closePromptModalBtn.addEventListener('click', closePromptModal);
+
+  // Close modal on background click
+  describePromptModal.addEventListener('click', (e) => {
+    if (e.target === describePromptModal) {
+      closePromptModal();
+    }
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closePromptModal();
+    }
+  });
+
   // Save settings
   saveButton.addEventListener('click', saveSettings);
 
@@ -227,9 +273,11 @@ async function loadSettings() {
 async function loadStorageStats() {
   try {
     const stats = await chrome.runtime.sendMessage({ action: 'getStorageStats' });
+    const highlights = await Storage.getHighlights();
 
     if (stats) {
       flashcardCount.textContent = stats.flashcardCount || 0;
+      highlightsCount.textContent = highlights.length || 0;
       const usedMB = (stats.bytesUsed / 1024 / 1024).toFixed(2);
       storageUsed.textContent = usedMB;
 
@@ -563,6 +611,237 @@ function showNotification(message, type = 'info') {
   setTimeout(() => {
     notification.classList.add('hidden');
   }, 5000);
+}
+
+// ============= DESCRIBE PROMPTS MANAGEMENT =============
+
+/**
+ * Load and display describe prompts
+ */
+async function loadDescribePrompts() {
+  const prompts = await Storage.getDescribePrompts();
+  describePromptsList.innerHTML = '';
+
+  if (prompts.length === 0) {
+    describePromptsList.innerHTML = '<p class="help-text">No describe prompts yet. Add one to get started!</p>';
+    return;
+  }
+
+  prompts.forEach(prompt => {
+    const promptElement = createPromptElement(prompt);
+    describePromptsList.appendChild(promptElement);
+  });
+}
+
+/**
+ * Create a prompt element
+ * @param {Object} prompt - Prompt data
+ * @returns {HTMLElement} Prompt element
+ */
+function createPromptElement(prompt) {
+  const div = document.createElement('div');
+  div.className = `prompt-item ${prompt.enabled ? '' : 'disabled'}`;
+  div.dataset.id = prompt.id;
+
+  const truncatedPrompt = prompt.prompt.length > 100
+    ? prompt.prompt.substring(0, 100) + '...'
+    : prompt.prompt;
+
+  div.innerHTML = `
+    <div class="prompt-info-display">
+      <h3>${escapeHtml(prompt.name)}</h3>
+      <p>${escapeHtml(truncatedPrompt)}</p>
+    </div>
+    <div class="prompt-actions">
+      <div class="prompt-toggle">
+        <label class="toggle-switch">
+          <input type="checkbox" ${prompt.enabled ? 'checked' : ''} data-id="${prompt.id}">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <button class="icon-button edit" data-id="${prompt.id}" title="Edit">✏️</button>
+      <button class="icon-button delete" data-id="${prompt.id}" title="Delete">🗑️</button>
+    </div>
+  `;
+
+  // Add event listeners
+  const toggleCheckbox = div.querySelector('input[type="checkbox"]');
+  toggleCheckbox.addEventListener('change', () => togglePromptEnabled(prompt.id, toggleCheckbox.checked));
+
+  const editBtn = div.querySelector('.edit');
+  editBtn.addEventListener('click', () => openEditPromptModal(prompt.id));
+
+  const deleteBtn = div.querySelector('.delete');
+  deleteBtn.addEventListener('click', () => deleteDescribePromptConfirm(prompt.id));
+
+  return div;
+}
+
+/**
+ * Escape HTML
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Toggle prompt enabled status
+ * @param {string} id - Prompt ID
+ * @param {boolean} enabled - Enabled status
+ */
+async function togglePromptEnabled(id, enabled) {
+  const success = await Storage.updateDescribePrompt(id, { enabled });
+  if (success) {
+    await loadDescribePrompts();
+    await refreshContextMenu();
+    showNotification(`Prompt ${enabled ? 'enabled' : 'disabled'}`, 'success');
+  } else {
+    showNotification('Failed to update prompt', 'error');
+    await loadDescribePrompts();
+  }
+}
+
+/**
+ * Open add prompt modal
+ */
+function openAddPromptModal() {
+  currentEditingPromptId = null;
+  promptModalTitle.textContent = 'Add Describe Prompt';
+  promptNameInput.value = '';
+  promptTextInput.value = '';
+  promptEnabledCheckbox.checked = true;
+  describePromptModal.classList.remove('hidden');
+}
+
+/**
+ * Open edit prompt modal
+ * @param {string} id - Prompt ID
+ */
+async function openEditPromptModal(id) {
+  const prompts = await Storage.getDescribePrompts();
+  const prompt = prompts.find(p => p.id === id);
+
+  if (!prompt) {
+    showNotification('Prompt not found', 'error');
+    return;
+  }
+
+  currentEditingPromptId = id;
+  promptModalTitle.textContent = 'Edit Describe Prompt';
+  promptNameInput.value = prompt.name;
+  promptTextInput.value = prompt.prompt;
+  promptEnabledCheckbox.checked = prompt.enabled;
+  describePromptModal.classList.remove('hidden');
+}
+
+/**
+ * Close prompt modal
+ */
+function closePromptModal() {
+  describePromptModal.classList.add('hidden');
+  currentEditingPromptId = null;
+}
+
+/**
+ * Save describe prompt
+ */
+async function saveDescribePrompt() {
+  const name = promptNameInput.value.trim();
+  const promptText = promptTextInput.value.trim();
+  const enabled = promptEnabledCheckbox.checked;
+
+  if (!name) {
+    showNotification('Prompt name is required', 'error');
+    return;
+  }
+
+  if (!promptText) {
+    showNotification('Prompt text is required', 'error');
+    return;
+  }
+
+  // Disable buttons during save
+  savePromptBtn.disabled = true;
+  cancelPromptBtn.disabled = true;
+
+  try {
+    let success;
+
+    if (currentEditingPromptId) {
+      // Update existing prompt
+      success = await Storage.updateDescribePrompt(currentEditingPromptId, {
+        name,
+        prompt: promptText,
+        enabled
+      });
+    } else {
+      // Add new prompt
+      success = await Storage.addDescribePrompt({
+        name,
+        prompt: promptText,
+        enabled
+      });
+    }
+
+    if (success) {
+      await loadDescribePrompts();
+      await refreshContextMenu();
+      closePromptModal();
+      showNotification(
+        currentEditingPromptId ? 'Prompt updated successfully' : 'Prompt added successfully',
+        'success'
+      );
+    } else {
+      showNotification('Failed to save prompt', 'error');
+    }
+  } finally {
+    // Re-enable buttons
+    savePromptBtn.disabled = false;
+    cancelPromptBtn.disabled = false;
+  }
+}
+
+/**
+ * Delete describe prompt with confirmation
+ * @param {string} id - Prompt ID
+ */
+async function deleteDescribePromptConfirm(id) {
+  const prompts = await Storage.getDescribePrompts();
+  const prompt = prompts.find(p => p.id === id);
+
+  if (!prompt) {
+    showNotification('Prompt not found', 'error');
+    return;
+  }
+
+  if (!confirm(`Delete prompt "${prompt.name}"? This cannot be undone.`)) {
+    return;
+  }
+
+  const success = await Storage.deleteDescribePrompt(id);
+
+  if (success) {
+    await loadDescribePrompts();
+    await refreshContextMenu();
+    showNotification('Prompt deleted successfully', 'success');
+  } else {
+    showNotification('Failed to delete prompt', 'error');
+  }
+}
+
+/**
+ * Refresh context menu after prompts change
+ */
+async function refreshContextMenu() {
+  try {
+    await chrome.runtime.sendMessage({ action: 'refreshContextMenu' });
+  } catch (error) {
+    console.error('Failed to refresh context menu:', error);
+  }
 }
 
 // Initialize when DOM is ready

@@ -6,8 +6,10 @@
 import Storage from '../lib/storage.js';
 import OpenRouterClient from './api.js';
 
-// Context menu ID
+// Context menu IDs
 const CONTEXT_MENU_ID = 'create-flashcard';
+const DESCRIBE_PARENT_ID = 'describe-parent';
+const SAVE_TO_NOTEBOOK_ID = 'save-to-notebook';
 
 // Track ongoing requests to prevent duplicates
 let isProcessing = false;
@@ -23,36 +25,110 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 /**
- * Create context menu item
+ * Create context menu items
  */
-function createContextMenu() {
+async function createContextMenu() {
+  // Remove all existing menu items
+  await chrome.contextMenus.removeAll();
+
+  // Create Flashcard menu item
   chrome.contextMenus.create({
     id: CONTEXT_MENU_ID,
     title: 'Create Flashcard',
     contexts: ['selection']
   });
+
+  // Create Save to Notebook menu item
+  chrome.contextMenus.create({
+    id: SAVE_TO_NOTEBOOK_ID,
+    title: 'Save to Notebook',
+    contexts: ['selection']
+  });
+
+  // Create Describe parent menu item
+  chrome.contextMenus.create({
+    id: DESCRIBE_PARENT_ID,
+    title: 'Describe',
+    contexts: ['selection']
+  });
+
+  // Get enabled describe prompts and create submenu items
+  const prompts = await Storage.getEnabledDescribePrompts();
+
+  if (prompts.length === 0) {
+    // If no prompts, show a disabled placeholder
+    chrome.contextMenus.create({
+      id: 'describe-no-prompts',
+      parentId: DESCRIBE_PARENT_ID,
+      title: 'No prompts available',
+      contexts: ['selection'],
+      enabled: false
+    });
+  } else {
+    // Create submenu item for each enabled prompt
+    prompts.forEach(prompt => {
+      chrome.contextMenus.create({
+        id: `describe-${prompt.id}`,
+        parentId: DESCRIBE_PARENT_ID,
+        title: prompt.name,
+        contexts: ['selection']
+      });
+    });
+  }
 }
 
 /**
  * Handle context menu clicks
  */
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== CONTEXT_MENU_ID) return;
+  const menuItemId = info.menuItemId;
 
-  // Debounce rapid clicks
-  const now = Date.now();
-  if (isProcessing || (now - lastRequestTime) < DEBOUNCE_DELAY) {
-    showNotification('Please wait', 'Already creating a flashcard...', 'info');
+  // Handle Create Flashcard
+  if (menuItemId === CONTEXT_MENU_ID) {
+    // Debounce rapid clicks
+    const now = Date.now();
+    if (isProcessing || (now - lastRequestTime) < DEBOUNCE_DELAY) {
+      showNotification('Please wait', 'Already creating a flashcard...', 'info');
+      return;
+    }
+
+    isProcessing = true;
+    lastRequestTime = now;
+
+    try {
+      await createFlashcard(info.selectionText, tab.url);
+    } finally {
+      isProcessing = false;
+    }
     return;
   }
 
-  isProcessing = true;
-  lastRequestTime = now;
+  // Handle Save to Notebook
+  if (menuItemId === SAVE_TO_NOTEBOOK_ID) {
+    await saveToNotebook(info.selectionText, tab.url, tab.title);
+    return;
+  }
 
-  try {
-    await createFlashcard(info.selectionText, tab.url);
-  } finally {
-    isProcessing = false;
+  // Handle Describe submenu items
+  if (typeof menuItemId === 'string' && menuItemId.startsWith('describe-')) {
+    const promptId = menuItemId.replace('describe-', '');
+
+    // Debounce rapid clicks
+    const now = Date.now();
+    if (isProcessing || (now - lastRequestTime) < DEBOUNCE_DELAY) {
+      showNotification('Please wait', 'Already processing...', 'info');
+      return;
+    }
+
+    isProcessing = true;
+    lastRequestTime = now;
+
+    try {
+      await createDescription(info.selectionText, tab.url, tab.title, promptId);
+    } finally {
+      isProcessing = false;
+    }
+    return;
   }
 });
 
@@ -103,12 +179,16 @@ async function createFlashcard(selectedText, sourceUrl) {
   // Build final prompt with schema instructions
   const prompt = Storage.buildPromptWithSchema(basePrompt, schema);
 
-  // Show processing notification
+  // Show processing notification and badge
   showNotification(
     'Creating Flashcard',
     `Creating flashcard for "${truncateText(word, 30)}"...`,
     'info'
   );
+
+  // Show loading badge
+  chrome.action.setBadgeText({ text: '...' });
+  chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
 
   try {
     // Create API client and generate definition
@@ -160,6 +240,9 @@ async function createFlashcard(selectedText, sourceUrl) {
       'success'
     );
 
+    // Clear badge
+    chrome.action.setBadgeText({ text: '' });
+
     console.log('Flashcard created:', flashcard);
   } catch (error) {
     console.error('Error creating flashcard:', error);
@@ -170,6 +253,183 @@ async function createFlashcard(selectedText, sourceUrl) {
       `Failed to create flashcard: ${error.message}`,
       'error'
     );
+
+    // Clear badge
+    chrome.action.setBadgeText({ text: '' });
+  }
+}
+
+/**
+ * Create a description from selected text using AI
+ * @param {string} selectedText - The text selected by user
+ * @param {string} sourceUrl - The URL where text was selected
+ * @param {string} sourceTitle - The page title where text was selected
+ * @param {string} promptId - The ID of the describe prompt to use
+ */
+async function createDescription(selectedText, sourceUrl, sourceTitle, promptId) {
+  if (!selectedText || selectedText.trim() === '') {
+    showNotification('Error', 'No text selected', 'error');
+    return;
+  }
+
+  // Truncate if too long
+  const text = selectedText.length > 2000
+    ? selectedText.substring(0, 2000)
+    : selectedText;
+
+  if (selectedText.length > 2000) {
+    console.warn('Selection truncated to 2000 characters');
+  }
+
+  // Load settings and prompts
+  const settings = await Storage.getSettings();
+  const prompts = await Storage.getDescribePrompts();
+  const describePrompt = prompts.find(p => p.id === promptId);
+
+  if (!describePrompt) {
+    showNotification('Error', 'Describe prompt not found', 'error');
+    return;
+  }
+
+  // Check if API key is configured
+  if (!settings.apiKey) {
+    showNotification(
+      'API Key Required',
+      'Please configure your OpenRouter API key in settings',
+      'error'
+    );
+    chrome.runtime.openOptionsPage();
+    return;
+  }
+
+  // Show processing notification and badge
+  showNotification(
+    'Creating Description',
+    `Describing "${truncateText(text, 30)}" with ${describePrompt.name}...`,
+    'info'
+  );
+
+  chrome.action.setBadgeText({ text: '...' });
+  chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
+
+  try {
+    // Create API client and generate description
+    const client = new OpenRouterClient(settings.apiKey, settings.selectedModel);
+    const result = await client.createDefinition(text, describePrompt.prompt);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    // Save to highlights with description
+    const highlight = {
+      text: text.trim(),
+      description: result.definition,
+      sourceUrl: sourceUrl,
+      sourceTitle: sourceTitle || extractDomain(sourceUrl),
+      promptName: describePrompt.name,
+      promptId: describePrompt.id,
+      model: settings.selectedModel,
+      type: 'described',
+      createdAt: Date.now()
+    };
+
+    const saved = await Storage.addHighlight(highlight);
+
+    if (!saved) {
+      throw new Error('Failed to save highlight');
+    }
+
+    // Show success notification
+    showNotification(
+      'Description Created',
+      `Successfully described "${truncateText(text, 30)}"`,
+      'success'
+    );
+
+    chrome.action.setBadgeText({ text: '' });
+
+    console.log('Description created:', highlight);
+  } catch (error) {
+    console.error('Error creating description:', error);
+
+    showNotification(
+      'Error',
+      `Failed to create description: ${error.message}`,
+      'error'
+    );
+
+    chrome.action.setBadgeText({ text: '' });
+  }
+}
+
+/**
+ * Save selected text to notebook without AI processing
+ * @param {string} selectedText - The text selected by user
+ * @param {string} sourceUrl - The URL where text was selected
+ * @param {string} sourceTitle - The page title where text was selected
+ */
+async function saveToNotebook(selectedText, sourceUrl, sourceTitle) {
+  if (!selectedText || selectedText.trim() === '') {
+    showNotification('Error', 'No text selected', 'error');
+    return;
+  }
+
+  // Truncate if too long (allow longer text for simple saves)
+  const text = selectedText.length > 5000
+    ? selectedText.substring(0, 5000)
+    : selectedText;
+
+  if (selectedText.length > 5000) {
+    console.warn('Selection truncated to 5000 characters');
+  }
+
+  try {
+    // Save to highlights without description
+    const highlight = {
+      text: text.trim(),
+      sourceUrl: sourceUrl,
+      sourceTitle: sourceTitle || extractDomain(sourceUrl),
+      type: 'simple',
+      createdAt: Date.now()
+    };
+
+    const saved = await Storage.addHighlight(highlight);
+
+    if (!saved) {
+      throw new Error('Failed to save highlight');
+    }
+
+    // Show success notification
+    showNotification(
+      'Saved to Notebook',
+      `Successfully saved "${truncateText(text, 30)}"`,
+      'success'
+    );
+
+    console.log('Highlight saved:', highlight);
+  } catch (error) {
+    console.error('Error saving to notebook:', error);
+
+    showNotification(
+      'Error',
+      `Failed to save to notebook: ${error.message}`,
+      'error'
+    );
+  }
+}
+
+/**
+ * Extract domain from URL
+ * @param {string} url - URL to extract domain from
+ * @returns {string} Domain name
+ */
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch (e) {
+    return url;
   }
 }
 
@@ -222,6 +482,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     Storage.getStorageStats()
       .then(stats => sendResponse(stats))
       .catch(error => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (request.action === 'refreshContextMenu') {
+    createContextMenu()
+      .then(() => sendResponse({ success: true }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
 });
