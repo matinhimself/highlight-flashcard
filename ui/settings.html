@@ -124,6 +124,46 @@
         </div>
       </section>
 
+      <!-- Schema Configuration Section -->
+      <section class="settings-section">
+        <h2>Response Schema Configuration</h2>
+        <p class="help-text">Define the structure of AI responses for better data organization</p>
+
+        <div class="form-group">
+          <label>Schema Mode</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="schemaMode" value="default" id="useDefaultSchema" checked />
+              <span>Use Default Schema (Recommended)</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="schemaMode" value="custom" id="useCustomSchema" />
+              <span>Use Custom Schema</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="defaultSchemaSection" class="schema-section">
+          <label>Default Schema Preview</label>
+          <div class="schema-preview" id="defaultSchemaPreview"></div>
+          <p class="help-text">AI will return structured JSON data matching this schema</p>
+        </div>
+
+        <div id="customSchemaSection" class="schema-section hidden">
+          <label for="customSchema">Custom Schema (JSON)</label>
+          <textarea
+            id="customSchema"
+            rows="12"
+            placeholder='{"field": "description", "anotherField": "description"}'
+          ></textarea>
+          <div class="schema-info">
+            <p class="help-text">Define your schema as a JSON object. Each field will be extracted from AI responses.</p>
+            <p class="char-count">Characters: <span id="schemaCharCount">0</span> / 2000</p>
+          </div>
+          <button id="validateSchema" class="button secondary">Validate JSON</button>
+        </div>
+      </section>
+
       <!-- Actions -->
       <section class="settings-section actions">
         <button id="saveSettings" class="button primary" disabled>Save Settings</button>

@@ -20,6 +20,14 @@ let defaultPromptSection;
 let customPromptSection;
 let defaultPromptPreview;
 let charCount;
+let useDefaultSchemaRadio;
+let useCustomSchemaRadio;
+let customSchemaTextarea;
+let defaultSchemaSection;
+let customSchemaSection;
+let defaultSchemaPreview;
+let schemaCharCount;
+let validateSchemaBtn;
 let saveButton;
 let resetButton;
 let testConnectionBtn;
@@ -52,6 +60,14 @@ async function init() {
   customPromptSection = document.getElementById('customPromptSection');
   defaultPromptPreview = document.getElementById('defaultPromptPreview');
   charCount = document.getElementById('charCount');
+  useDefaultSchemaRadio = document.getElementById('useDefaultSchema');
+  useCustomSchemaRadio = document.getElementById('useCustomSchema');
+  customSchemaTextarea = document.getElementById('customSchema');
+  defaultSchemaSection = document.getElementById('defaultSchemaSection');
+  customSchemaSection = document.getElementById('customSchemaSection');
+  defaultSchemaPreview = document.getElementById('defaultSchemaPreview');
+  schemaCharCount = document.getElementById('schemaCharCount');
+  validateSchemaBtn = document.getElementById('validateSchema');
   saveButton = document.getElementById('saveSettings');
   resetButton = document.getElementById('resetSettings');
   testConnectionBtn = document.getElementById('testConnection');
@@ -69,8 +85,9 @@ async function init() {
   // Load storage stats
   await loadStorageStats();
 
-  // Show default prompt
+  // Show default prompt and schema
   defaultPromptPreview.textContent = Storage.getDefaultPrompt();
+  defaultSchemaPreview.textContent = JSON.stringify(Storage.getDefaultSchema(), null, 2);
 }
 
 /**
@@ -117,6 +134,24 @@ function setupEventListeners() {
     updateCharCount();
     markDirty();
   });
+
+  useDefaultSchemaRadio.addEventListener('change', () => {
+    toggleSchemaSections();
+    markDirty();
+  });
+
+  useCustomSchemaRadio.addEventListener('change', () => {
+    toggleSchemaSections();
+    markDirty();
+  });
+
+  customSchemaTextarea.addEventListener('input', () => {
+    updateSchemaCharCount();
+    markDirty();
+  });
+
+  // Validate schema JSON
+  validateSchemaBtn.addEventListener('click', validateSchema);
 
   // Test connection
   testConnectionBtn.addEventListener('click', testConnection);
@@ -166,9 +201,20 @@ async function loadSettings() {
     useCustomPromptRadio.checked = true;
   }
 
+  // Handle schema selection
+  customSchemaTextarea.value = settings.customSchema || '';
+
+  if (settings.useDefaultSchema !== false) {
+    useDefaultSchemaRadio.checked = true;
+  } else {
+    useCustomSchemaRadio.checked = true;
+  }
+
   toggleModelSections();
   togglePromptSections();
+  toggleSchemaSections();
   updateCharCount();
+  updateSchemaCharCount();
 
   // Reset dirty flag
   isDirty = false;
@@ -233,6 +279,56 @@ function updateCharCount() {
     charCount.style.color = 'var(--error-color)';
   } else {
     charCount.style.color = 'var(--text-secondary)';
+  }
+}
+
+/**
+ * Toggle between default and custom schema sections
+ */
+function toggleSchemaSections() {
+  if (useDefaultSchemaRadio.checked) {
+    defaultSchemaSection.classList.remove('hidden');
+    customSchemaSection.classList.add('hidden');
+  } else {
+    defaultSchemaSection.classList.add('hidden');
+    customSchemaSection.classList.remove('hidden');
+  }
+}
+
+/**
+ * Update character count for custom schema
+ */
+function updateSchemaCharCount() {
+  const count = customSchemaTextarea.value.length;
+  schemaCharCount.textContent = count;
+
+  if (count > 2000) {
+    schemaCharCount.style.color = 'var(--error-color)';
+  } else {
+    schemaCharCount.style.color = 'var(--text-secondary)';
+  }
+}
+
+/**
+ * Validate schema JSON
+ */
+function validateSchema() {
+  const schemaText = customSchemaTextarea.value.trim();
+
+  if (!schemaText) {
+    showNotification('Schema is empty', 'warning');
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(schemaText);
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+      showNotification('Schema must be a JSON object (not an array)', 'error');
+      return;
+    }
+    showNotification('Valid JSON schema!', 'success');
+  } catch (error) {
+    showNotification(`Invalid JSON: ${error.message}`, 'error');
   }
 }
 
@@ -336,6 +432,8 @@ async function saveSettings() {
   const selectedModel = modelSelect.value;
   const useDefaultPrompt = useDefaultPromptRadio.checked;
   const customPrompt = customPromptTextarea.value.trim();
+  const useDefaultSchema = useDefaultSchemaRadio.checked;
+  const customSchema = customSchemaTextarea.value.trim();
 
   // Validate
   if (!apiKey) {
@@ -369,6 +467,30 @@ async function saveSettings() {
     return;
   }
 
+  // Validate schema selection
+  if (!useDefaultSchema && customSchema.length > 2000) {
+    showNotification('Custom schema must be 2000 characters or less', 'error');
+    return;
+  }
+
+  if (!useDefaultSchema && customSchema === '') {
+    showNotification('Custom schema cannot be empty when selected', 'error');
+    return;
+  }
+
+  if (!useDefaultSchema) {
+    try {
+      const parsed = JSON.parse(customSchema);
+      if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+        showNotification('Schema must be a valid JSON object', 'error');
+        return;
+      }
+    } catch (error) {
+      showNotification(`Invalid schema JSON: ${error.message}`, 'error');
+      return;
+    }
+  }
+
   // Determine which model to save
   const finalModel = useCustomModel ? customModelId : selectedModel;
 
@@ -379,7 +501,9 @@ async function saveSettings() {
     useCustomModel,
     customModelId: useCustomModel ? customModelId : '',
     customPrompt,
-    useDefaultPrompt
+    useDefaultPrompt,
+    customSchema,
+    useDefaultSchema
   };
 
   saveButton.disabled = true;
@@ -409,7 +533,9 @@ async function resetSettings() {
     useCustomModel: false,
     customModelId: '',
     customPrompt: '',
-    useDefaultPrompt: true
+    useDefaultPrompt: true,
+    customSchema: '',
+    useDefaultSchema: true
   };
 
   const success = await Storage.saveSettings(defaultSettings);

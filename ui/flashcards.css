@@ -238,6 +238,21 @@ main {
   color: var(--primary-color);
 }
 
+.data-field {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.data-label {
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-right: 6px;
+}
+
+.data-value {
+  color: var(--text-primary);
+}
+
 .flashcard-meta {
   display: flex;
   justify-content: space-between;
