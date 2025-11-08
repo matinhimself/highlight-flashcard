@@ -1,0 +1,246 @@
+/* Additional styles specific to highlights notebook */
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.highlights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 0;
+}
+
+.highlight-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  border-left: 4px solid #4f46e5;
+}
+
+.highlight-card.simple {
+  border-left-color: #10b981;
+}
+
+.highlight-card.described {
+  border-left-color: #f59e0b;
+}
+
+.highlight-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.highlight-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.highlight-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.highlight-type.simple {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.highlight-type.described {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.highlight-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.highlight-content {
+  margin-bottom: 16px;
+}
+
+.highlight-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #1f2937;
+  padding: 12px;
+  background-color: #fef9e7;
+  border-left: 3px solid #fbbf24;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.highlight-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #374151;
+  padding: 12px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  margin-top: 12px;
+}
+
+.highlight-description h1,
+.highlight-description h2,
+.highlight-description h3 {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  color: #1f2937;
+}
+
+.highlight-description h1 {
+  font-size: 18px;
+}
+
+.highlight-description h2 {
+  font-size: 16px;
+}
+
+.highlight-description h3 {
+  font-size: 14px;
+}
+
+.highlight-description p {
+  margin-bottom: 8px;
+}
+
+.highlight-description ul,
+.highlight-description ol {
+  margin-left: 20px;
+  margin-bottom: 8px;
+}
+
+.highlight-description code {
+  background-color: #e5e7eb;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.highlight-description pre {
+  background-color: #1f2937;
+  color: #f3f4f6;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 8px;
+}
+
+.highlight-description pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+.highlight-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  color: #6b7280;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.meta-item a {
+  color: #4f46e5;
+  text-decoration: none;
+}
+
+.meta-item a:hover {
+  text-decoration: underline;
+}
+
+.prompt-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background-color: #e0e7ff;
+  color: #4338ca;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.model-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Skeleton loading state */
+.highlight-skeleton {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border-left: 4px solid #e5e7eb;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-header {
+  height: 24px;
+  width: 120px;
+  margin-bottom: 12px;
+}
+
+.skeleton-text {
+  height: 60px;
+  margin-bottom: 12px;
+}
+
+.skeleton-description {
+  height: 100px;
+  margin-bottom: 12px;
+}
+
+.skeleton-meta {
+  height: 16px;
+  width: 200px;
+}
+
+/* Filter tags */
+.toolbar-actions select {
+  margin-left: 8px;
+}
