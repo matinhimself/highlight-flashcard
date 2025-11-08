@@ -87,6 +87,7 @@ The extension supports multiple AI models through OpenRouter:
 | Claude 3 Haiku | Anthropic | Fast responses, lower cost | Low |
 | GPT-4 Turbo | OpenAI | High quality, detailed explanations | High |
 | GPT-3.5 Turbo | OpenAI | Fast and affordable | Low |
+| Grok Beta | xAI | Fast responses, good quality | Low-Medium |
 | Llama 3.1 8B | Meta | Open source, very affordable | Very Low |
 | Gemini Pro | Google | Good balance of quality and cost | Medium |
 

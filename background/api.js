@@ -9,6 +9,7 @@ export const AVAILABLE_MODELS = [
   { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku (Faster, Cheaper)', provider: 'Anthropic' },
   { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI' },
   { id: 'openai/gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI' },
+  { id: 'x-ai/grok-beta', name: 'Grok Beta (Fast)', provider: 'xAI' },
   { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'Meta' },
   { id: 'google/gemini-pro', name: 'Gemini Pro', provider: 'Google' }
 ];
