@@ -7,6 +7,7 @@ A browser extension that helps you create AI-powered flashcards from highlighted
 - **Context Menu Integration**: Right-click any highlighted text to create a flashcard
 - **AI-Powered Definitions**: Uses OpenRouter AI models (Claude, GPT, Llama, etc.) to generate clear, educational definitions
 - **Local Storage**: All flashcards stored locally in your browser
+- **Anki Export**: Export flashcards to Anki-compatible format for spaced repetition learning
 - **Customizable Prompts**: Choose between default dictionary-style prompts or create your own
 - **Model Selection**: Support for multiple AI models with different capabilities and costs
 - **Search & Sort**: Easily find and organize your flashcards
@@ -76,6 +77,26 @@ A browser extension that helps you create AI-powered flashcards from highlighted
 - **Delete**: Click the 🗑️ icon to delete a flashcard
 - **Search**: Use the search bar to filter flashcards by word, definition, or source URL
 - **Sort**: Use the sort dropdown to organize your flashcards
+
+### Exporting to Anki
+
+You can export your flashcards to Anki format for spaced repetition learning:
+
+1. Click the extension icon to open your flashcard collection
+2. (Optional) Use search or sort to filter which cards you want to export
+3. Click the **"📥 Export to Anki"** button in the toolbar
+4. A text file will be downloaded (e.g., `highlight-flashcards-2025-11-08.txt`)
+5. Open Anki and go to **File → Import**
+6. Select the downloaded file
+7. Configure import settings:
+   - **Field separator**: Tab
+   - **Allow HTML in fields**: ✓ Checked
+   - **Field mapping**: Field 1 → Front, Field 2 → Back
+   - **Deck**: Choose or create a deck (default: "Highlight Flashcards")
+   - **Note type**: Basic
+8. Click **Import**
+
+**Note**: The exported file includes helpful instructions in the header comments. Each flashcard includes the word/phrase on the front and the AI-generated definition plus source URL on the back.
 
 ## AI Models
 
@@ -255,7 +276,7 @@ highlight-flashcard/
 ## Future Enhancements
 
 - [ ] Spaced repetition algorithm for studying
-- [ ] Export flashcards to CSV/Anki format
+- [x] Export flashcards to CSV/Anki format
 - [ ] Import flashcards from other sources
 - [ ] Multiple language support
 - [ ] Flashcard categories/tags
