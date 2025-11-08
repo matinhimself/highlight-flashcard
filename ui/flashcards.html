@@ -100,6 +100,60 @@
     </div>
   </div>
 
+  <!-- Loading Progress Modal -->
+  <div id="loadingModal" class="modal loading-modal hidden">
+    <div class="modal-content loading-content">
+      <div class="loading-header">
+        <div class="loading-spinner"></div>
+        <h2 id="loadingTitle">Creating Flashcard...</h2>
+      </div>
+      <div class="loading-body">
+        <div class="progress-steps">
+          <div class="progress-step" id="step1">
+            <div class="step-icon">📝</div>
+            <div class="step-info">
+              <div class="step-title">Preparing</div>
+              <div class="step-status">Getting ready...</div>
+            </div>
+          </div>
+          <div class="progress-step" id="step2">
+            <div class="step-icon">🤖</div>
+            <div class="step-info">
+              <div class="step-title">AI Processing</div>
+              <div class="step-status">Waiting...</div>
+            </div>
+          </div>
+          <div class="progress-step" id="step3">
+            <div class="step-icon">💾</div>
+            <div class="step-info">
+              <div class="step-title">Saving</div>
+              <div class="step-status">Waiting...</div>
+            </div>
+          </div>
+        </div>
+        <div class="loading-text" id="loadingText"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flashcard Preview Modal -->
+  <div id="previewModal" class="modal preview-modal hidden">
+    <div class="modal-content preview-content">
+      <div class="modal-header preview-header">
+        <h2>✨ Flashcard Created!</h2>
+        <button class="close-btn" id="closePreviewModal">✕</button>
+      </div>
+      <div class="modal-body preview-body">
+        <div class="preview-flashcard" id="previewFlashcard">
+          <!-- Flashcard will be inserted here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="closePreview" class="button primary">Got it!</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="flashcards.js"></script>
 </body>
 </html>

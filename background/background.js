@@ -190,7 +190,40 @@ async function createFlashcard(selectedText, sourceUrl) {
   chrome.action.setBadgeText({ text: '...' });
   chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
 
+  // Auto-open popup to show progress
   try {
+    await chrome.action.openPopup();
+  } catch (e) {
+    console.log('Could not open popup automatically:', e);
+  }
+
+  // Send progress: Step 1 - Preparing
+  sendMessageToPopup({
+    type: 'FLASHCARD_PROGRESS',
+    step: 1,
+    status: 'active',
+    text: `Preparing flashcard for "${truncateText(word, 30)}"`
+  });
+
+  // Small delay to show step 1
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // Mark step 1 as completed
+  sendMessageToPopup({
+    type: 'FLASHCARD_PROGRESS',
+    step: 1,
+    status: 'completed'
+  });
+
+  try {
+    // Send progress: Step 2 - AI Processing
+    sendMessageToPopup({
+      type: 'FLASHCARD_PROGRESS',
+      step: 2,
+      status: 'active',
+      text: 'Generating definition with AI...'
+    });
+
     // Create API client and generate definition
     const client = new OpenRouterClient(settings.apiKey, settings.selectedModel);
     const result = await client.createDefinition(word, prompt);
@@ -198,6 +231,14 @@ async function createFlashcard(selectedText, sourceUrl) {
     if (!result.success) {
       throw new Error(result.error);
     }
+
+    // Mark step 2 as completed
+    sendMessageToPopup({
+      type: 'FLASHCARD_PROGRESS',
+      step: 2,
+      status: 'completed',
+      text: 'AI processing complete!'
+    });
 
     // Parse JSON response if using schema
     let flashcardData = {};
@@ -214,6 +255,14 @@ async function createFlashcard(selectedText, sourceUrl) {
       // If JSON parsing fails, treat as plain text (legacy format)
       flashcardData = { definition: result.definition };
     }
+
+    // Send progress: Step 3 - Saving
+    sendMessageToPopup({
+      type: 'FLASHCARD_PROGRESS',
+      step: 3,
+      status: 'active',
+      text: 'Saving flashcard...'
+    });
 
     // Save flashcard with structured data
     const flashcard = {
@@ -233,6 +282,14 @@ async function createFlashcard(selectedText, sourceUrl) {
       throw new Error('Failed to save flashcard');
     }
 
+    // Mark step 3 as completed
+    sendMessageToPopup({
+      type: 'FLASHCARD_PROGRESS',
+      step: 3,
+      status: 'completed',
+      text: 'Flashcard saved successfully!'
+    });
+
     // Show success notification
     showNotification(
       'Flashcard Created',
@@ -244,8 +301,20 @@ async function createFlashcard(selectedText, sourceUrl) {
     chrome.action.setBadgeText({ text: '' });
 
     console.log('Flashcard created:', flashcard);
+
+    // Send flashcard to popup for preview
+    sendMessageToPopup({
+      type: 'FLASHCARD_CREATED',
+      flashcard: flashcard
+    });
   } catch (error) {
     console.error('Error creating flashcard:', error);
+
+    // Send error to popup
+    sendMessageToPopup({
+      type: 'FLASHCARD_ERROR',
+      error: error.message
+    });
 
     // Show error notification
     showNotification(
@@ -516,6 +585,18 @@ async function testApiConnection(apiKey, model) {
       error: error.message
     };
   }
+}
+
+/**
+ * Send message to popup (if it's open)
+ * @param {Object} message - Message to send
+ */
+function sendMessageToPopup(message) {
+  // Send message to all extension contexts (including popup if open)
+  chrome.runtime.sendMessage(message).catch(error => {
+    // Ignore errors if popup is not open
+    console.log('Could not send message to popup:', error.message);
+  });
 }
 
 console.log('Background service worker loaded');
