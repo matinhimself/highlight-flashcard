@@ -46,7 +46,21 @@
         </div>
 
         <div class="form-group">
-          <label for="model">AI Model</label>
+          <label>AI Model Selection</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="modelMode" value="preset" id="usePresetModel" checked />
+              <span>Select from list</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="modelMode" value="custom" id="useCustomModel" />
+              <span>Enter custom model ID</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="presetModelSection" class="model-section">
+          <label for="model">Choose Model</label>
           <select id="model">
             <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (Recommended)</option>
             <option value="anthropic/claude-3-haiku">Claude 3 Haiku (Faster, Cheaper)</option>
@@ -57,6 +71,19 @@
             <option value="google/gemini-pro">Gemini Pro</option>
           </select>
           <p class="help-text">Different models have different costs and capabilities</p>
+        </div>
+
+        <div id="customModelSection" class="model-section hidden">
+          <label for="customModelId">Custom Model ID</label>
+          <input
+            type="text"
+            id="customModelId"
+            placeholder="e.g., anthropic/claude-3-opus or openai/gpt-4"
+            autocomplete="off"
+          />
+          <p class="help-text">
+            Enter any OpenRouter model ID. See <a href="https://openrouter.ai/models" target="_blank">available models</a>
+          </p>
         </div>
       </section>
 

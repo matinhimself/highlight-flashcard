@@ -15,6 +15,8 @@ Browser's `chrome.storage.local` API (compatible with Firefox)
 interface Settings {
   apiKey: string;              // OpenRouter API key
   selectedModel: string;        // Selected model ID (e.g., "anthropic/claude-3-sonnet")
+  useCustomModel: boolean;      // Whether to use custom model ID
+  customModelId: string;        // Custom model ID entered by user
   customPrompt: string;         // User's custom prompt template
   useDefaultPrompt: boolean;    // Whether to use default or custom prompt
 }
@@ -25,6 +27,8 @@ interface Settings {
 {
   "apiKey": "",
   "selectedModel": "anthropic/claude-3.5-sonnet",
+  "useCustomModel": false,
+  "customModelId": "",
   "customPrompt": "",
   "useDefaultPrompt": true
 }

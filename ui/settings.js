@@ -8,6 +8,11 @@ import Storage from '../lib/storage.js';
 let apiKeyInput;
 let toggleApiKeyBtn;
 let modelSelect;
+let usePresetModelRadio;
+let useCustomModelRadio;
+let presetModelSection;
+let customModelSection;
+let customModelIdInput;
 let useDefaultPromptRadio;
 let useCustomPromptRadio;
 let customPromptTextarea;
@@ -35,6 +40,11 @@ async function init() {
   apiKeyInput = document.getElementById('apiKey');
   toggleApiKeyBtn = document.getElementById('toggleApiKey');
   modelSelect = document.getElementById('model');
+  usePresetModelRadio = document.getElementById('usePresetModel');
+  useCustomModelRadio = document.getElementById('useCustomModel');
+  presetModelSection = document.getElementById('presetModelSection');
+  customModelSection = document.getElementById('customModelSection');
+  customModelIdInput = document.getElementById('customModelId');
   useDefaultPromptRadio = document.getElementById('useDefaultPrompt');
   useCustomPromptRadio = document.getElementById('useCustomPrompt');
   customPromptTextarea = document.getElementById('customPrompt');
@@ -81,6 +91,17 @@ function setupEventListeners() {
   });
 
   modelSelect.addEventListener('change', markDirty);
+  customModelIdInput.addEventListener('input', markDirty);
+
+  usePresetModelRadio.addEventListener('change', () => {
+    toggleModelSections();
+    markDirty();
+  });
+
+  useCustomModelRadio.addEventListener('change', () => {
+    toggleModelSections();
+    markDirty();
+  });
 
   useDefaultPromptRadio.addEventListener('change', () => {
     togglePromptSections();
@@ -127,7 +148,16 @@ async function loadSettings() {
 
   // Populate form
   apiKeyInput.value = settings.apiKey || '';
-  modelSelect.value = settings.selectedModel || 'anthropic/claude-3.5-sonnet';
+
+  // Handle model selection
+  if (settings.useCustomModel) {
+    useCustomModelRadio.checked = true;
+    customModelIdInput.value = settings.customModelId || '';
+  } else {
+    usePresetModelRadio.checked = true;
+    modelSelect.value = settings.selectedModel || 'anthropic/claude-3.5-sonnet';
+  }
+
   customPromptTextarea.value = settings.customPrompt || '';
 
   if (settings.useDefaultPrompt) {
@@ -136,6 +166,7 @@ async function loadSettings() {
     useCustomPromptRadio.checked = true;
   }
 
+  toggleModelSections();
   togglePromptSections();
   updateCharCount();
 
@@ -162,6 +193,19 @@ async function loadStorageStats() {
     }
   } catch (error) {
     console.error('Error loading storage stats:', error);
+  }
+}
+
+/**
+ * Toggle between preset and custom model sections
+ */
+function toggleModelSections() {
+  if (usePresetModelRadio.checked) {
+    presetModelSection.classList.remove('hidden');
+    customModelSection.classList.add('hidden');
+  } else {
+    presetModelSection.classList.add('hidden');
+    customModelSection.classList.remove('hidden');
   }
 }
 
@@ -205,7 +249,10 @@ function markDirty() {
  */
 async function testConnection() {
   const apiKey = apiKeyInput.value.trim();
-  const model = modelSelect.value;
+  const useCustomModel = useCustomModelRadio.checked;
+  const customModelId = customModelIdInput.value.trim();
+  const selectedModel = modelSelect.value;
+  const model = useCustomModel ? customModelId : selectedModel;
 
   if (!apiKey) {
     showNotification('Please enter an API key', 'error');
@@ -215,6 +262,12 @@ async function testConnection() {
   // Validate API key format
   if (!apiKey.startsWith('sk-or-') || apiKey.length < 20) {
     showNotification('Invalid API key format. Should start with "sk-or-" and be at least 20 characters.', 'error');
+    return;
+  }
+
+  // Validate model
+  if (useCustomModel && customModelId === '') {
+    showNotification('Please enter a custom model ID', 'error');
     return;
   }
 
@@ -278,7 +331,9 @@ function updateConnectionStatus(status) {
  */
 async function saveSettings() {
   const apiKey = apiKeyInput.value.trim();
-  const model = modelSelect.value;
+  const useCustomModel = useCustomModelRadio.checked;
+  const customModelId = customModelIdInput.value.trim();
+  const selectedModel = modelSelect.value;
   const useDefaultPrompt = useDefaultPromptRadio.checked;
   const customPrompt = customPromptTextarea.value.trim();
 
@@ -293,6 +348,17 @@ async function saveSettings() {
     return;
   }
 
+  // Validate model selection
+  if (useCustomModel && customModelId === '') {
+    showNotification('Custom model ID cannot be empty when selected', 'error');
+    return;
+  }
+
+  if (useCustomModel && !customModelId.includes('/')) {
+    showNotification('Custom model ID should be in format: provider/model-name', 'warning');
+    // Don't return, just warn
+  }
+
   if (!useDefaultPrompt && customPrompt.length > 2000) {
     showNotification('Custom prompt must be 2000 characters or less', 'error');
     return;
@@ -303,10 +369,15 @@ async function saveSettings() {
     return;
   }
 
+  // Determine which model to save
+  const finalModel = useCustomModel ? customModelId : selectedModel;
+
   // Save
   const settings = {
     apiKey,
-    selectedModel: model,
+    selectedModel: finalModel,
+    useCustomModel,
+    customModelId: useCustomModel ? customModelId : '',
     customPrompt,
     useDefaultPrompt
   };
@@ -335,6 +406,8 @@ async function resetSettings() {
   const defaultSettings = {
     apiKey: '',
     selectedModel: 'anthropic/claude-3.5-sonnet',
+    useCustomModel: false,
+    customModelId: '',
     customPrompt: '',
     useDefaultPrompt: true
   };
