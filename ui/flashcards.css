@@ -134,6 +134,11 @@ header h1 {
   opacity: 1;
 }
 
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .toolbar-actions select {
   padding: 8px 12px;
   border: 1px solid var(--border);
@@ -142,6 +147,12 @@ header h1 {
   font-family: inherit;
   background: var(--surface);
   cursor: pointer;
+}
+
+.export-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 main {
@@ -531,4 +542,27 @@ main {
 
 .skeleton-card .flashcard-meta {
   height: 16px;
+}
+
+/* Notification animations */
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(400px);
+    opacity: 0;
+  }
 }
