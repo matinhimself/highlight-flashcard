@@ -210,8 +210,10 @@ function createFlashcardElement(flashcard) {
   card.className = 'flashcard';
   card.dataset.id = flashcard.id;
 
-  // Parse definition as markdown-lite (simple formatting)
-  const formattedDefinition = formatDefinition(flashcard.definition);
+  // Format flashcard content - handle structured data or plain definition
+  const formattedDefinition = flashcard.data
+    ? formatStructuredData(flashcard.data)
+    : formatDefinition(flashcard.definition);
 
   // Format date
   const date = new Date(flashcard.createdAt);
@@ -245,6 +247,45 @@ function createFlashcardElement(flashcard) {
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(flashcard.id));
 
   return card;
+}
+
+/**
+ * Format structured data from schema
+ * @param {Object} data - Structured flashcard data
+ * @returns {string} Formatted HTML
+ */
+function formatStructuredData(data) {
+  if (!data || typeof data !== 'object') {
+    return escapeHtml(String(data));
+  }
+
+  let html = '';
+
+  // Iterate through all fields in the data
+  for (const [key, value] of Object.entries(data)) {
+    if (!value) continue; // Skip empty fields
+
+    // Format key as label (convert camelCase to Title Case)
+    const label = key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase())
+      .trim();
+
+    // Format value
+    let formattedValue = escapeHtml(String(value));
+
+    // Apply markdown-like formatting
+    formattedValue = formattedValue.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    formattedValue = formattedValue.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    formattedValue = formattedValue.replace(/\n/g, '<br>');
+
+    html += `<div class="data-field">
+      <span class="data-label">${escapeHtml(label)}:</span>
+      <span class="data-value">${formattedValue}</span>
+    </div>`;
+  }
+
+  return html || formatDefinition(data.definition || 'No definition available');
 }
 
 /**

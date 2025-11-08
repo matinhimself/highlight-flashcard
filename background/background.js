@@ -167,10 +167,17 @@ async function createFlashcard(selectedText, sourceUrl) {
     return;
   }
 
-  // Determine prompt to use
-  const prompt = settings.useDefaultPrompt
+  // Determine prompt and schema to use
+  let basePrompt = settings.useDefaultPrompt
     ? Storage.getDefaultPrompt()
     : settings.customPrompt || Storage.getDefaultPrompt();
+
+  const schema = settings.useDefaultSchema
+    ? Storage.getDefaultSchema()
+    : settings.customSchema || Storage.getDefaultSchema();
+
+  // Build final prompt with schema instructions
+  const prompt = Storage.buildPromptWithSchema(basePrompt, schema);
 
   // Show processing notification and badge
   showNotification(
@@ -192,13 +199,31 @@ async function createFlashcard(selectedText, sourceUrl) {
       throw new Error(result.error);
     }
 
-    // Save flashcard
+    // Parse JSON response if using schema
+    let flashcardData = {};
+    try {
+      // Try to parse as JSON first
+      const parsedData = JSON.parse(result.definition);
+      if (typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+        flashcardData = parsedData;
+      } else {
+        // If not a valid object, treat as plain text
+        flashcardData = { definition: result.definition };
+      }
+    } catch (e) {
+      // If JSON parsing fails, treat as plain text (legacy format)
+      flashcardData = { definition: result.definition };
+    }
+
+    // Save flashcard with structured data
     const flashcard = {
       word: word.trim(),
-      definition: result.definition,
+      data: flashcardData, // Structured data from schema
+      definition: flashcardData.definition || result.definition, // Fallback for compatibility
       sourceUrl: sourceUrl,
       model: settings.selectedModel,
       prompt: prompt,
+      schema: schema,
       createdAt: Date.now()
     };
 
