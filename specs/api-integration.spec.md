@@ -77,6 +77,7 @@ Default list of popular models (user can customize):
 - `anthropic/claude-3-haiku`
 - `openai/gpt-4-turbo`
 - `openai/gpt-3.5-turbo`
+- `x-ai/grok-beta` (Fast)
 - `meta-llama/llama-3.1-8b-instruct`
 - `google/gemini-pro`
 
