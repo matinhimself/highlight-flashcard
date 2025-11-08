@@ -15,6 +15,7 @@ let flashcardsList;
 let loadMoreContainer;
 let loadMoreBtn;
 let settingsBtn;
+let highlightsBtn;
 let emptySettingsBtn;
 let editModal;
 let deleteModal;
@@ -43,6 +44,7 @@ async function init() {
   loadMoreContainer = document.getElementById('loadMoreContainer');
   loadMoreBtn = document.getElementById('loadMoreBtn');
   settingsBtn = document.getElementById('settingsBtn');
+  highlightsBtn = document.getElementById('highlightsBtn');
   emptySettingsBtn = document.getElementById('emptySettingsBtn');
   editModal = document.getElementById('editModal');
   deleteModal = document.getElementById('deleteModal');
@@ -69,11 +71,10 @@ function setupEventListeners() {
   // Sort
   sortSelect.addEventListener('change', handleSort);
 
-  // Export
   exportBtn.addEventListener('click', exportToAnki);
 
-  // Settings buttons
   settingsBtn.addEventListener('click', openSettings);
+  highlightsBtn.addEventListener('click', openHighlights);
   emptySettingsBtn.addEventListener('click', openSettings);
 
   // Load more
@@ -381,6 +382,13 @@ function loadMore() {
  */
 function openSettings() {
   chrome.runtime.openOptionsPage();
+}
+
+/**
+ * Open highlights page
+ */
+function openHighlights() {
+  window.location.href = 'highlights.html';
 }
 
 /**
