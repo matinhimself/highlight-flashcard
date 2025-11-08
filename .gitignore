@@ -1,0 +1,38 @@
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.log
+*.tmp
+.cache/
+
+# Node modules (if added later)
+node_modules/
+
+# Build artifacts (if added later)
+dist/
+build/
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# Extension packaging
+*.zip
+*.crx
+*.xpi
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+generate_icons.py
+
+# Local testing
+test/
+.test/

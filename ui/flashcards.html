@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Flashcards</title>
+  <link rel="stylesheet" href="flashcards.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-content">
+        <h1>📚 My Flashcards <span id="flashcardCount" class="count-badge">0</span></h1>
+        <button id="settingsBtn" class="icon-button" title="Settings">⚙️</button>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <div class="search-container">
+        <input type="text" id="searchInput" placeholder="🔍 Search flashcards..." />
+        <button id="clearSearch" class="clear-btn hidden">✕</button>
+      </div>
+
+      <div class="toolbar-actions">
+        <select id="sortSelect">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="az">A-Z</option>
+          <option value="za">Z-A</option>
+        </select>
+      </div>
+    </div>
+
+    <main id="mainContent">
+      <!-- Empty state -->
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-icon">📚</div>
+        <h2>No flashcards yet</h2>
+        <p>Highlight text on any webpage and select "Create Flashcard" to get started.</p>
+        <button id="emptySettingsBtn" class="button primary">Go to Settings</button>
+      </div>
+
+      <!-- Flashcards list -->
+      <div id="flashcardsList" class="flashcards-list"></div>
+
+      <!-- Load more button -->
+      <div id="loadMoreContainer" class="load-more-container hidden">
+        <button id="loadMoreBtn" class="button secondary">Load More</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Flashcard</h2>
+        <button class="close-btn" id="closeModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="editWord">Word/Phrase</label>
+          <input type="text" id="editWord" />
+        </div>
+        <div class="form-group">
+          <label for="editDefinition">Definition</label>
+          <textarea id="editDefinition" rows="8"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="editSource">Source URL</label>
+          <input type="text" id="editSource" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelEdit" class="button secondary">Cancel</button>
+        <button id="saveEdit" class="button primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal hidden">
+    <div class="modal-content small">
+      <div class="modal-header">
+        <h2>Delete Flashcard?</h2>
+        <button class="close-btn" id="closeDeleteModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete the flashcard for "<strong id="deleteWord"></strong>"?</p>
+        <p class="warning-text">This cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelDelete" class="button secondary">Cancel</button>
+        <button id="confirmDelete" class="button danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="flashcards.js"></script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - Highlight Flashcard</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚙️ Settings</h1>
+      <p class="subtitle">Configure Highlight Flashcard Extension</p>
+    </header>
+
+    <div id="notification" class="notification hidden"></div>
+
+    <main>
+      <!-- API Configuration Section -->
+      <section class="settings-section">
+        <h2>API Configuration</h2>
+
+        <div class="form-group">
+          <label for="apiKey">OpenRouter API Key</label>
+          <div class="input-with-button">
+            <div class="password-input">
+              <input
+                type="password"
+                id="apiKey"
+                placeholder="sk-or-v1-..."
+                autocomplete="off"
+              />
+              <button type="button" id="toggleApiKey" class="icon-button" title="Show/Hide API Key">
+                👁️
+              </button>
+            </div>
+          </div>
+          <p class="help-text">
+            Get your API key from <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>
+          </p>
+        </div>
+
+        <div class="button-group">
+          <button id="testConnection" class="button secondary">Test Connection</button>
+          <span id="connectionStatus" class="status-badge hidden"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="model">AI Model</label>
+          <select id="model">
+            <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (Recommended)</option>
+            <option value="anthropic/claude-3-haiku">Claude 3 Haiku (Faster, Cheaper)</option>
+            <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
+            <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
+            <option value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B</option>
+            <option value="google/gemini-pro">Gemini Pro</option>
+          </select>
+          <p class="help-text">Different models have different costs and capabilities</p>
+        </div>
+      </section>
+
+      <!-- Prompt Configuration Section -->
+      <section class="settings-section">
+        <h2>Prompt Configuration</h2>
+
+        <div class="form-group">
+          <label>Prompt Mode</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="promptMode" value="default" id="useDefaultPrompt" checked />
+              <span>Use Default Prompt (Recommended)</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="promptMode" value="custom" id="useCustomPrompt" />
+              <span>Use Custom Prompt</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="defaultPromptSection" class="prompt-section">
+          <label>Default Prompt Preview</label>
+          <div class="prompt-preview" id="defaultPromptPreview"></div>
+        </div>
+
+        <div id="customPromptSection" class="prompt-section hidden">
+          <label for="customPrompt">Custom Prompt</label>
+          <textarea
+            id="customPrompt"
+            rows="10"
+            placeholder="Enter your custom prompt. Use {word} as placeholder for the selected text."
+          ></textarea>
+          <div class="prompt-info">
+            <p class="help-text">Tip: Use {word} as a placeholder for the selected text</p>
+            <p class="char-count">Characters: <span id="charCount">0</span> / 2000</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <section class="settings-section actions">
+        <button id="saveSettings" class="button primary" disabled>Save Settings</button>
+        <button id="resetSettings" class="button secondary">Reset to Defaults</button>
+      </section>
+
+      <!-- Storage Info -->
+      <section class="settings-section">
+        <h2>Storage Information</h2>
+        <div class="storage-info">
+          <p><strong>Flashcards:</strong> <span id="flashcardCount">0</span></p>
+          <p><strong>Storage Used:</strong> <span id="storageUsed">0</span> / 5 MB</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="settings.js"></script>
+</body>
+</html>
