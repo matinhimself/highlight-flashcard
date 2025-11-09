@@ -30,6 +30,7 @@ const CARDS_PER_PAGE = 20;
 let currentEditingId = null;
 let currentDeletingId = null;
 let searchDebounceTimer = null;
+let currentTemplate = null; // Cache for current template
 
 /**
  * Initialize the flashcards page
@@ -167,8 +168,15 @@ async function loadFlashcards(showLoading = false) {
     showSkeletonCards();
   }
 
+  // Load flashcards and template settings
   allFlashcards = await Storage.getFlashcards();
   filteredFlashcards = [...allFlashcards];
+
+  // Load current template setting
+  const settings = await Storage.getSettings();
+  currentTemplate = settings.useDefaultTemplate
+    ? Storage.getDefaultTemplate()
+    : (settings.customTemplate || Storage.getDefaultTemplate());
 
   updateCount();
   renderFlashcards();
@@ -316,15 +324,37 @@ function toggleFlashcard(card) {
 }
 
 /**
- * Format structured data from schema
+ * Format structured data from schema using custom template
  * @param {Object} data - Structured flashcard data
+ * @param {string} template - Optional custom template to use (defaults to currentTemplate)
  * @returns {string} Formatted HTML
  */
-function formatStructuredData(data) {
+function formatStructuredData(data, template = null) {
   if (!data || typeof data !== 'object') {
     return escapeHtml(String(data));
   }
 
+  // Use provided template or fall back to currentTemplate or default
+  const activeTemplate = template || currentTemplate || Storage.getDefaultTemplate();
+
+  // Render template with data variables
+  const rendered = Storage.renderTemplate(activeTemplate, data);
+
+  // If template rendering succeeded, apply markdown formatting
+  if (rendered && rendered.trim()) {
+    return applyMarkdownFormatting(rendered);
+  }
+
+  // Fallback to field-by-field display if template fails
+  return formatStructuredDataFallback(data);
+}
+
+/**
+ * Fallback: Format structured data field-by-field (original implementation)
+ * @param {Object} data - Structured flashcard data
+ * @returns {string} Formatted HTML
+ */
+function formatStructuredDataFallback(data) {
   let html = '';
 
   // Iterate through all fields in the data
@@ -341,9 +371,7 @@ function formatStructuredData(data) {
     let formattedValue = escapeHtml(String(value));
 
     // Apply markdown-like formatting
-    formattedValue = formattedValue.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    formattedValue = formattedValue.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    formattedValue = formattedValue.replace(/\n/g, '<br>');
+    formattedValue = applyMarkdownFormatting(formattedValue);
 
     html += `<div class="data-field">
       <span class="data-label">${escapeHtml(label)}:</span>
@@ -351,27 +379,74 @@ function formatStructuredData(data) {
     </div>`;
   }
 
-  return html || formatDefinition(data.definition || 'No definition available');
+  return html || applyMarkdownFormatting(data.definition || 'No definition available');
 }
 
 /**
- * Format definition with simple markdown-like formatting
+ * Apply markdown formatting to text
+ * Supports: bold, italic, headings, lists, code, line breaks
+ * @param {string} text - Text to format
+ * @returns {string} Formatted HTML
+ */
+function applyMarkdownFormatting(text) {
+  if (!text) return '';
+
+  let formatted = escapeHtml(text);
+
+  // Headings (must be on their own line)
+  // ### Heading 3
+  formatted = formatted.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  // ## Heading 2
+  formatted = formatted.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  // # Heading 1
+  formatted = formatted.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Horizontal rules
+  formatted = formatted.replace(/^---$/gm, '<hr>');
+  formatted = formatted.replace(/^\*\*\*$/gm, '<hr>');
+
+  // Code blocks ```code```
+  formatted = formatted.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+
+  // Inline code `code`
+  formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Bold text **text** (use non-greedy match)
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic text *text* (use non-greedy match, avoid matching within words)
+  formatted = formatted.replace(/(?<!\w)\*(.+?)\*(?!\w)/g, '<em>$1</em>');
+
+  // Unordered lists - items (lines starting with -)
+  formatted = formatted.replace(/^- (.+)$/gm, '<li>$1</li>');
+  // Wrap consecutive <li> items in <ul>
+  formatted = formatted.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+  // Ordered lists - items (lines starting with number.)
+  formatted = formatted.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+  // Links [text](url)
+  formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  // Line breaks (convert double newlines to paragraphs, single to <br>)
+  formatted = formatted.replace(/\n\n/g, '</p><p>');
+  formatted = formatted.replace(/\n/g, '<br>');
+
+  // Wrap in paragraph if not already wrapped
+  if (!formatted.startsWith('<')) {
+    formatted = `<p>${formatted}</p>`;
+  }
+
+  return formatted;
+}
+
+/**
+ * Format definition with markdown formatting (backward compatibility wrapper)
  * @param {string} text - Definition text
  * @returns {string} Formatted HTML
  */
 function formatDefinition(text) {
-  let formatted = escapeHtml(text);
-
-  // Bold text **text**
-  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-  // Italic text *text*
-  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
-
-  // Line breaks
-  formatted = formatted.replace(/\n/g, '<br>');
-
-  return formatted;
+  return applyMarkdownFormatting(text);
 }
 
 /**
