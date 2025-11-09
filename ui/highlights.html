@@ -6,23 +6,31 @@
   <title>Highlights Notebook</title>
   <link rel="stylesheet" href="flashcards.css">
   <link rel="stylesheet" href="highlights.css">
+  <script src="../lib/lucide.min.js"></script>
 </head>
 <body>
   <div class="container">
     <header>
       <div class="header-content">
-        <h1>📓 Highlights Notebook <span id="highlightsCount" class="count-badge">0</span></h1>
+        <h1><i data-lucide="notebook-pen" class="header-icon"></i> Lexis Notebook <span id="highlightsCount" class="count-badge">0</span></h1>
         <div class="header-actions">
-          <button id="flashcardsBtn" class="icon-button" title="Go to Flashcards">📚</button>
-          <button id="settingsBtn" class="icon-button" title="Settings">⚙️</button>
+          <button id="flashcardsBtn" class="icon-button" title="Go to Flashcards">
+            <i data-lucide="book-marked"></i>
+          </button>
+          <button id="settingsBtn" class="icon-button" title="Settings">
+            <i data-lucide="settings"></i>
+          </button>
         </div>
       </div>
     </header>
 
     <div class="toolbar">
       <div class="search-container">
-        <input type="text" id="searchInput" placeholder="🔍 Search highlights..." />
-        <button id="clearSearch" class="clear-btn hidden">✕</button>
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="searchInput" placeholder="Search highlights..." />
+        <button id="clearSearch" class="clear-btn hidden">
+          <i data-lucide="x"></i>
+        </button>
       </div>
 
       <div class="toolbar-actions">
@@ -41,7 +49,7 @@
     <main id="mainContent">
       <!-- Empty state -->
       <div id="emptyState" class="empty-state hidden">
-        <div class="empty-icon">📓</div>
+        <i data-lucide="notebook-text" class="empty-icon"></i>
         <h2>No highlights yet</h2>
         <p>Highlight text on any webpage and select "Save to Notebook" or "Describe" to get started.</p>
       </div>
@@ -61,7 +69,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>Edit Highlight</h2>
-        <button class="close-btn" id="closeModal">✕</button>
+        <button class="close-btn" id="closeModal">
+          <i data-lucide="x"></i>
+        </button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -93,7 +103,9 @@
     <div class="modal-content small">
       <div class="modal-header">
         <h2>Delete Highlight?</h2>
-        <button class="close-btn" id="closeDeleteModal">✕</button>
+        <button class="close-btn" id="closeDeleteModal">
+          <i data-lucide="x"></i>
+        </button>
       </div>
       <div class="modal-body">
         <p>Are you sure you want to delete this highlight?</p>

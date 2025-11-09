@@ -266,11 +266,14 @@ function createFlashcardElement(flashcard) {
     <div class="flashcard-header">
       <div class="flashcard-word">${escapeHtml(flashcard.word)}</div>
       <div class="flashcard-actions">
+        <button class="expand-btn action-icon-btn" data-id="${flashcard.id}" title="Expand">
+          <i data-lucide="chevron-down" class="icon"></i>
+        </button>
         <button class="edit-btn action-icon-btn" data-id="${flashcard.id}" title="Edit">
-          <span class="icon">✎</span>
+          <i data-lucide="pencil" class="icon"></i>
         </button>
         <button class="delete-btn action-icon-btn" data-id="${flashcard.id}" title="Delete">
-          <span class="icon">✕</span>
+          <i data-lucide="trash-2" class="icon"></i>
         </button>
       </div>
     </div>
@@ -287,10 +290,44 @@ function createFlashcardElement(flashcard) {
   `;
 
   // Add event listeners
+  card.querySelector('.expand-btn').addEventListener('click', (e) => toggleExpand(e, card));
   card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(flashcard.id));
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(flashcard.id));
 
+  // Initialize Lucide icons for this card
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons({
+      icons: card.querySelectorAll('[data-lucide]'),
+      attrs: { 'stroke-width': 2 }
+    });
+  }
+
   return card;
+}
+
+/**
+ * Toggle expand/collapse for a flashcard
+ * @param {Event} e - Click event
+ * @param {HTMLElement} card - Card element
+ */
+function toggleExpand(e, card) {
+  e.stopPropagation();
+  const isExpanded = card.classList.contains('expanded');
+  const expandBtn = card.querySelector('.expand-btn i');
+
+  if (isExpanded) {
+    card.classList.remove('expanded');
+    if (expandBtn) {
+      expandBtn.setAttribute('data-lucide', 'chevron-down');
+      lucide.createIcons();
+    }
+  } else {
+    card.classList.add('expanded');
+    if (expandBtn) {
+      expandBtn.setAttribute('data-lucide', 'chevron-up');
+      lucide.createIcons();
+    }
+  }
 }
 
 /**

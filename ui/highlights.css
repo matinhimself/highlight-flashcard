@@ -117,9 +117,9 @@
 
 .highlight-actions .action-icon-btn .icon {
   color: var(--primary-green-light);
-  font-size: 16px;
-  font-weight: bold;
-  line-height: 1;
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
   position: relative;
   z-index: 1;
   transition: all 0.3s ease;

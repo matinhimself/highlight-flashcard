@@ -28,6 +28,13 @@ let customSchemaSection;
 let defaultSchemaPreview;
 let schemaCharCount;
 let validateSchemaBtn;
+let useDefaultTemplateRadio;
+let useCustomTemplateRadio;
+let customTemplateTextarea;
+let defaultTemplateSection;
+let customTemplateSection;
+let defaultTemplatePreview;
+let templateCharCount;
 let saveButton;
 let resetButton;
 let testConnectionBtn;
@@ -80,6 +87,13 @@ async function init() {
   defaultSchemaPreview = document.getElementById('defaultSchemaPreview');
   schemaCharCount = document.getElementById('schemaCharCount');
   validateSchemaBtn = document.getElementById('validateSchema');
+  useDefaultTemplateRadio = document.getElementById('useDefaultTemplate');
+  useCustomTemplateRadio = document.getElementById('useCustomTemplate');
+  customTemplateTextarea = document.getElementById('customTemplate');
+  defaultTemplateSection = document.getElementById('defaultTemplateSection');
+  customTemplateSection = document.getElementById('customTemplateSection');
+  defaultTemplatePreview = document.getElementById('defaultTemplatePreview');
+  templateCharCount = document.getElementById('templateCharCount');
   saveButton = document.getElementById('saveSettings');
   resetButton = document.getElementById('resetSettings');
   testConnectionBtn = document.getElementById('testConnection');
@@ -111,9 +125,10 @@ async function init() {
   // Load describe prompts
   await loadDescribePrompts();
 
-  // Show default prompt and schema
+  // Show default prompt, schema, and template
   defaultPromptPreview.textContent = Storage.getDefaultPrompt();
   defaultSchemaPreview.textContent = JSON.stringify(Storage.getDefaultSchema(), null, 2);
+  defaultTemplatePreview.textContent = Storage.getDefaultTemplate();
 }
 
 /**
@@ -124,7 +139,13 @@ function setupEventListeners() {
   toggleApiKeyBtn.addEventListener('click', () => {
     const type = apiKeyInput.type === 'password' ? 'text' : 'password';
     apiKeyInput.type = type;
-    toggleApiKeyBtn.textContent = type === 'password' ? '👁️' : '🙈';
+    const icon = toggleApiKeyBtn.querySelector('i');
+    if (icon) {
+      icon.setAttribute('data-lucide', type === 'password' ? 'eye' : 'eye-off');
+      if (window.lucide) {
+        window.lucide.createIcons({ nameAttr: 'data-lucide' });
+      }
+    }
   });
 
   // Mark form as dirty on changes
@@ -178,6 +199,21 @@ function setupEventListeners() {
 
   // Validate schema JSON
   validateSchemaBtn.addEventListener('click', validateSchema);
+
+  useDefaultTemplateRadio.addEventListener('change', () => {
+    toggleTemplateSections();
+    markDirty();
+  });
+
+  useCustomTemplateRadio.addEventListener('change', () => {
+    toggleTemplateSections();
+    markDirty();
+  });
+
+  customTemplateTextarea.addEventListener('input', () => {
+    updateTemplateCharCount();
+    markDirty();
+  });
 
   // Test connection
   testConnectionBtn.addEventListener('click', testConnection);
@@ -256,11 +292,22 @@ async function loadSettings() {
     useCustomSchemaRadio.checked = true;
   }
 
+  // Handle template selection
+  customTemplateTextarea.value = settings.customTemplate || '';
+
+  if (settings.useDefaultTemplate !== false) {
+    useDefaultTemplateRadio.checked = true;
+  } else {
+    useCustomTemplateRadio.checked = true;
+  }
+
   toggleModelSections();
   togglePromptSections();
   toggleSchemaSections();
+  toggleTemplateSections();
   updateCharCount();
   updateSchemaCharCount();
+  updateTemplateCharCount();
 
   // Reset dirty flag
   isDirty = false;
@@ -381,6 +428,33 @@ function validateSchema() {
 }
 
 /**
+ * Toggle between default and custom template sections
+ */
+function toggleTemplateSections() {
+  if (useDefaultTemplateRadio.checked) {
+    defaultTemplateSection.classList.remove('hidden');
+    customTemplateSection.classList.add('hidden');
+  } else {
+    defaultTemplateSection.classList.add('hidden');
+    customTemplateSection.classList.remove('hidden');
+  }
+}
+
+/**
+ * Update character count for custom template
+ */
+function updateTemplateCharCount() {
+  const count = customTemplateTextarea.value.length;
+  templateCharCount.textContent = count;
+
+  if (count > 2000) {
+    templateCharCount.style.color = 'var(--error-color)';
+  } else {
+    templateCharCount.style.color = 'var(--text-secondary)';
+  }
+}
+
+/**
  * Mark form as dirty (has unsaved changes)
  */
 function markDirty() {
@@ -482,6 +556,8 @@ async function saveSettings() {
   const customPrompt = customPromptTextarea.value.trim();
   const useDefaultSchema = useDefaultSchemaRadio.checked;
   const customSchema = customSchemaTextarea.value.trim();
+  const useDefaultTemplate = useDefaultTemplateRadio.checked;
+  const customTemplate = customTemplateTextarea.value.trim();
 
   // Validate
   if (!apiKey) {
@@ -539,6 +615,17 @@ async function saveSettings() {
     }
   }
 
+  // Validate template selection
+  if (!useDefaultTemplate && customTemplate.length > 2000) {
+    showNotification('Custom template must be 2000 characters or less', 'error');
+    return;
+  }
+
+  if (!useDefaultTemplate && customTemplate === '') {
+    showNotification('Custom template cannot be empty when selected', 'warning');
+    return;
+  }
+
   // Determine which model to save
   const finalModel = useCustomModel ? customModelId : selectedModel;
 
@@ -551,7 +638,9 @@ async function saveSettings() {
     customPrompt,
     useDefaultPrompt,
     customSchema,
-    useDefaultSchema
+    useDefaultSchema,
+    customTemplate,
+    useDefaultTemplate
   };
 
   saveButton.disabled = true;
@@ -583,7 +672,9 @@ async function resetSettings() {
     customPrompt: '',
     useDefaultPrompt: true,
     customSchema: '',
-    useDefaultSchema: true
+    useDefaultSchema: true,
+    customTemplate: '',
+    useDefaultTemplate: true
   };
 
   const success = await Storage.saveSettings(defaultSettings);
@@ -659,8 +750,12 @@ function createPromptElement(prompt) {
           <span class="toggle-slider"></span>
         </label>
       </div>
-      <button class="icon-button edit" data-id="${prompt.id}" title="Edit">✏️</button>
-      <button class="icon-button delete" data-id="${prompt.id}" title="Delete">🗑️</button>
+      <button class="icon-button edit" data-id="${prompt.id}" title="Edit">
+        <i data-lucide="pencil"></i>
+      </button>
+      <button class="icon-button delete" data-id="${prompt.id}" title="Delete">
+        <i data-lucide="trash-2"></i>
+      </button>
     </div>
   `;
 
@@ -673,6 +768,11 @@ function createPromptElement(prompt) {
 
   const deleteBtn = div.querySelector('.delete');
   deleteBtn.addEventListener('click', () => deleteDescribePromptConfirm(prompt.id));
+
+  // Initialize Lucide icons for this element
+  if (window.lucide) {
+    window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  }
 
   return div;
 }
@@ -844,9 +944,20 @@ async function refreshContextMenu() {
   }
 }
 
+// Initialize Lucide icons
+function initLucideIcons() {
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    initLucideIcons();
+    init();
+  });
 } else {
+  initLucideIcons();
   init();
 }

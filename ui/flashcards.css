@@ -397,9 +397,9 @@ main {
 
 .action-icon-btn .icon {
   color: var(--primary-green-light);
-  font-size: 16px;
-  font-weight: bold;
-  line-height: 1;
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
   position: relative;
   z-index: 1;
   transition: all 0.3s ease;
@@ -445,6 +445,36 @@ main {
 .flashcard-definition strong {
   color: var(--primary-green);
   font-weight: 600;
+}
+
+/* Expanded/Collapsed States */
+.flashcard:not(.expanded) .flashcard-definition {
+  max-height: 100px;
+  overflow: hidden;
+  position: relative;
+}
+
+.flashcard:not(.expanded) .flashcard-definition::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, var(--dark-card));
+  pointer-events: none;
+}
+
+.flashcard.expanded .flashcard-definition {
+  max-height: none;
+}
+
+.expand-btn .icon {
+  transition: transform 0.3s ease;
+}
+
+.flashcard.expanded .expand-btn .icon {
+  transform: rotate(180deg);
 }
 
 .data-field {

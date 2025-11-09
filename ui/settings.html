@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings - Highlight Flashcard</title>
+  <title>Settings - Lexis</title>
   <link rel="stylesheet" href="settings.css">
+  <script src="../lib/lucide.min.js"></script>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>⚙️ Settings</h1>
-      <p class="subtitle">Configure Highlight Flashcard Extension</p>
+      <h1><i data-lucide="settings" class="header-icon-settings"></i> Settings</h1>
+      <p class="subtitle">Configure Lexis Extension</p>
     </header>
 
     <div id="notification" class="notification hidden"></div>
@@ -31,7 +32,7 @@
                 autocomplete="off"
               />
               <button type="button" id="toggleApiKey" class="icon-button" title="Show/Hide API Key">
-                👁️
+                <i data-lucide="eye"></i>
               </button>
             </div>
           </div>
@@ -164,6 +165,47 @@
         </div>
       </section>
 
+      <!-- Flashcard Template Configuration Section -->
+      <section class="settings-section">
+        <h2>Flashcard Template Configuration</h2>
+        <p class="help-text">Customize how flashcard content is displayed using markdown with {{variable}} placeholders</p>
+
+        <div class="form-group">
+          <label>Template Mode</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="templateMode" value="default" id="useDefaultTemplate" checked />
+              <span>Use Default Template (Recommended)</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="templateMode" value="custom" id="useCustomTemplate" />
+              <span>Use Custom Template</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="defaultTemplateSection" class="template-section">
+          <label>Default Template Preview</label>
+          <div class="template-preview" id="defaultTemplatePreview"></div>
+          <p class="help-text">Use {{variable}} syntax to insert schema fields. Supports markdown formatting.</p>
+        </div>
+
+        <div id="customTemplateSection" class="template-section hidden">
+          <label for="customTemplate">Custom Template (Markdown)</label>
+          <textarea
+            id="customTemplate"
+            rows="10"
+            placeholder="**{{word}}** ({{partOfSpeech}})&#10;&#10;**Definition:** {{definition}}&#10;&#10;**Example:** *{{example}}*"
+          ></textarea>
+          <div class="template-info">
+            <p class="help-text">
+              Use {{variableName}} to insert schema values. Supports markdown: **bold**, *italic*, # headings, - lists, `code`, [links](url)
+            </p>
+            <p class="char-count">Characters: <span id="templateCharCount">0</span> / 2000</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Describe Prompts Section -->
       <section class="settings-section">
         <h2>Describe Prompts</h2>
@@ -199,7 +241,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2 id="promptModalTitle">Add Describe Prompt</h2>
-        <button class="close-btn" id="closePromptModal">✕</button>
+        <button class="close-btn" id="closePromptModal">
+          <i data-lucide="x"></i>
+        </button>
       </div>
       <div class="modal-body">
         <div class="form-group">
