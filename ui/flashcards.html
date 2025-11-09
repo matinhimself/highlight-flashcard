@@ -5,19 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Flashcards</title>
   <link rel="stylesheet" href="flashcards.css">
-  <script src="../lib/lucide.min.js"></script>
 </head>
 <body>
   <div class="container">
     <header>
       <div class="header-content">
-        <h1><i data-lucide="book-marked" class="header-icon"></i> Lexis <span id="flashcardCount" class="count-badge">0</span></h1>
+        <h1><img src="icons/book-marked.svg" class="header-icon" alt=""> Lexis <span id="flashcardCount" class="count-badge">0</span></h1>
         <div class="header-actions">
           <button id="highlightsBtn" class="icon-button" title="Go to Highlights">
-            <i data-lucide="notebook-pen"></i>
+            <img src="icons/notebook-pen.svg" alt="Highlights">
           </button>
           <button id="settingsBtn" class="icon-button" title="Settings">
-            <i data-lucide="settings"></i>
+            <img src="icons/settings.svg" alt="Settings">
           </button>
         </div>
       </div>
@@ -25,10 +24,10 @@
 
     <div class="toolbar">
       <div class="search-container">
-        <i data-lucide="search" class="search-icon"></i>
+        <img src="icons/search.svg" class="search-icon" alt="">
         <input type="text" id="searchInput" placeholder="Search flashcards..." />
         <button id="clearSearch" class="clear-btn hidden">
-          <i data-lucide="x"></i>
+          <img src="icons/x.svg" alt="Clear">
         </button>
       </div>
 
@@ -40,7 +39,7 @@
           <option value="za">Z-A</option>
         </select>
         <button id="exportBtn" class="button export-btn" title="Export to Anki">
-          <i data-lucide="download"></i>
+          <img src="icons/download.svg" alt="">
           Export
         </button>
       </div>
@@ -49,7 +48,7 @@
     <main id="mainContent">
       <!-- Empty state -->
       <div id="emptyState" class="empty-state hidden">
-        <i data-lucide="book-open" class="empty-icon"></i>
+        <img src="icons/book-open.svg" class="empty-icon" alt="">
         <h2>No flashcards yet</h2>
         <p>Highlight text on any webpage and select "Create Flashcard" to get started.</p>
         <button id="emptySettingsBtn" class="button primary">Go to Settings</button>
@@ -71,7 +70,7 @@
       <div class="modal-header">
         <h2>Edit Flashcard</h2>
         <button class="close-btn" id="closeModal">
-          <i data-lucide="x"></i>
+          <img src="icons/x.svg" alt="Close">
         </button>
       </div>
       <div class="modal-body">
@@ -101,7 +100,7 @@
       <div class="modal-header">
         <h2>Delete Flashcard?</h2>
         <button class="close-btn" id="closeDeleteModal">
-          <i data-lucide="x"></i>
+          <img src="icons/x.svg" alt="Close">
         </button>
       </div>
       <div class="modal-body">
@@ -125,21 +124,21 @@
       <div class="loading-body">
         <div class="progress-steps">
           <div class="progress-step" id="step1">
-            <i data-lucide="file-text" class="step-icon"></i>
+            <img src="icons/file-text.svg" class="step-icon" alt="">
             <div class="step-info">
               <div class="step-title">Preparing</div>
               <div class="step-status">Getting ready...</div>
             </div>
           </div>
           <div class="progress-step" id="step2">
-            <i data-lucide="sparkles" class="step-icon"></i>
+            <img src="icons/sparkles.svg" class="step-icon" alt="">
             <div class="step-info">
               <div class="step-title">AI Processing</div>
               <div class="step-status">Waiting...</div>
             </div>
           </div>
           <div class="progress-step" id="step3">
-            <i data-lucide="save" class="step-icon"></i>
+            <img src="icons/save.svg" class="step-icon" alt="">
             <div class="step-info">
               <div class="step-title">Saving</div>
               <div class="step-status">Waiting...</div>
@@ -155,9 +154,9 @@
   <div id="previewModal" class="modal preview-modal hidden">
     <div class="modal-content preview-content">
       <div class="modal-header preview-header">
-        <h2><i data-lucide="check-circle" class="preview-icon"></i> Flashcard Created!</h2>
+        <h2><img src="icons/check-circle.svg" class="preview-icon" alt=""> Flashcard Created!</h2>
         <button class="close-btn" id="closePreviewModal">
-          <i data-lucide="x"></i>
+          <img src="icons/x.svg" alt="Close">
         </button>
       </div>
       <div class="modal-body preview-body">
@@ -171,7 +170,6 @@
     </div>
   </div>
 
-  <script src="lucide-init.js"></script>
   <script type="module" src="flashcards.js"></script>
 </body>
 </html>

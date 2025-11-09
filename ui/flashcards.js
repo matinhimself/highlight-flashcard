@@ -275,13 +275,13 @@ function createFlashcardElement(flashcard) {
       <div class="flashcard-word">${escapeHtml(flashcard.word)}</div>
       <div class="flashcard-actions">
         <button class="expand-btn action-icon-btn" data-id="${flashcard.id}" title="Expand">
-          <i data-lucide="chevron-down" class="icon"></i>
+          <img src="icons/chevron-down.svg" class="icon" alt="Expand">
         </button>
         <button class="edit-btn action-icon-btn" data-id="${flashcard.id}" title="Edit">
-          <i data-lucide="pencil" class="icon"></i>
+          <img src="icons/pencil.svg" class="icon" alt="Edit">
         </button>
         <button class="delete-btn action-icon-btn" data-id="${flashcard.id}" title="Delete">
-          <i data-lucide="trash-2" class="icon"></i>
+          <img src="icons/trash-2.svg" class="icon" alt="Delete">
         </button>
       </div>
     </div>
@@ -302,14 +302,6 @@ function createFlashcardElement(flashcard) {
   card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(flashcard.id));
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(flashcard.id));
 
-  // Initialize Lucide icons for this card
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons({
-      icons: card.querySelectorAll('[data-lucide]'),
-      attrs: { 'stroke-width': 2 }
-    });
-  }
-
   return card;
 }
 
@@ -321,19 +313,17 @@ function createFlashcardElement(flashcard) {
 function toggleExpand(e, card) {
   e.stopPropagation();
   const isExpanded = card.classList.contains('expanded');
-  const expandBtn = card.querySelector('.expand-btn i');
+  const expandBtn = card.querySelector('.expand-btn img');
 
   if (isExpanded) {
     card.classList.remove('expanded');
     if (expandBtn) {
-      expandBtn.setAttribute('data-lucide', 'chevron-down');
-      lucide.createIcons();
+      expandBtn.src = 'icons/chevron-down.svg';
     }
   } else {
     card.classList.add('expanded');
     if (expandBtn) {
-      expandBtn.setAttribute('data-lucide', 'chevron-up');
-      lucide.createIcons();
+      expandBtn.src = 'icons/chevron-up.svg';
     }
   }
 }

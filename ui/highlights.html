@@ -6,19 +6,18 @@
   <title>Highlights Notebook</title>
   <link rel="stylesheet" href="flashcards.css">
   <link rel="stylesheet" href="highlights.css">
-  <script src="../lib/lucide.min.js"></script>
 </head>
 <body>
   <div class="container">
     <header>
       <div class="header-content">
-        <h1><i data-lucide="notebook-pen" class="header-icon"></i> Lexis Notebook <span id="highlightsCount" class="count-badge">0</span></h1>
+        <h1><img src="icons/notebook-pen.svg" class="header-icon" alt=""> Lexis Notebook <span id="highlightsCount" class="count-badge">0</span></h1>
         <div class="header-actions">
           <button id="flashcardsBtn" class="icon-button" title="Go to Flashcards">
-            <i data-lucide="book-marked"></i>
+            <img src="icons/book-marked.svg" alt="Flashcards">
           </button>
           <button id="settingsBtn" class="icon-button" title="Settings">
-            <i data-lucide="settings"></i>
+            <img src="icons/settings.svg" alt="Settings">
           </button>
         </div>
       </div>
@@ -26,10 +25,10 @@
 
     <div class="toolbar">
       <div class="search-container">
-        <i data-lucide="search" class="search-icon"></i>
+        <img src="icons/search.svg" class="search-icon" alt="">
         <input type="text" id="searchInput" placeholder="Search highlights..." />
         <button id="clearSearch" class="clear-btn hidden">
-          <i data-lucide="x"></i>
+          <img src="icons/x.svg" alt="Clear">
         </button>
       </div>
 
@@ -49,7 +48,7 @@
     <main id="mainContent">
       <!-- Empty state -->
       <div id="emptyState" class="empty-state hidden">
-        <i data-lucide="notebook-text" class="empty-icon"></i>
+        <img src="icons/notebook-text.svg" class="empty-icon" alt="">
         <h2>No highlights yet</h2>
         <p>Highlight text on any webpage and select "Save to Notebook" or "Describe" to get started.</p>
       </div>
@@ -70,7 +69,7 @@
       <div class="modal-header">
         <h2>Edit Highlight</h2>
         <button class="close-btn" id="closeModal">
-          <i data-lucide="x"></i>
+          <img src="icons/x.svg" alt="Close">
         </button>
       </div>
       <div class="modal-body">
@@ -104,7 +103,7 @@
       <div class="modal-header">
         <h2>Delete Highlight?</h2>
         <button class="close-btn" id="closeDeleteModal">
-          <i data-lucide="x"></i>
+          <img src="icons/x.svg" alt="Close">
         </button>
       </div>
       <div class="modal-body">
@@ -119,6 +118,5 @@
   </div>
 
   <script type="module" src="highlights.js"></script>
-  <script src="lucide-init.js" defer></script>
 </body>
 </html>

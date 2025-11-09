@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings - Lexis</title>
   <link rel="stylesheet" href="settings.css">
-  <script src="../lib/lucide.min.js"></script>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1><i data-lucide="settings" class="header-icon-settings"></i> Settings</h1>
+      <h1><img src="icons/settings.svg" class="header-icon-settings" alt=""> Settings</h1>
       <p class="subtitle">Configure Lexis Extension</p>
     </header>
 
@@ -32,7 +31,7 @@
                 autocomplete="off"
               />
               <button type="button" id="toggleApiKey" class="icon-button" title="Show/Hide API Key">
-                <i data-lucide="eye"></i>
+                <img src="icons/eye.svg" alt="Toggle visibility">
               </button>
             </div>
           </div>
@@ -242,7 +241,7 @@
       <div class="modal-header">
         <h2 id="promptModalTitle">Add Describe Prompt</h2>
         <button class="close-btn" id="closePromptModal">
-          <i data-lucide="x"></i>
+          <img src="icons/x.svg" alt="Close">
         </button>
       </div>
       <div class="modal-body">
@@ -270,6 +269,5 @@
   </div>
 
   <script type="module" src="settings.js"></script>
-  <script src="lucide-init.js" defer></script>
 </body>
 </html>
