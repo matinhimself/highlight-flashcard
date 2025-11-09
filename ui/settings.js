@@ -139,12 +139,9 @@ function setupEventListeners() {
   toggleApiKeyBtn.addEventListener('click', () => {
     const type = apiKeyInput.type === 'password' ? 'text' : 'password';
     apiKeyInput.type = type;
-    const icon = toggleApiKeyBtn.querySelector('i');
+    const icon = toggleApiKeyBtn.querySelector('img');
     if (icon) {
-      icon.setAttribute('data-lucide', type === 'password' ? 'eye' : 'eye-off');
-      if (window.lucide) {
-        window.lucide.createIcons({ nameAttr: 'data-lucide' });
-      }
+      icon.src = type === 'password' ? 'icons/eye.svg' : 'icons/eye-off.svg';
     }
   });
 
@@ -939,20 +936,9 @@ async function refreshContextMenu() {
   }
 }
 
-// Initialize Lucide icons
-function initLucideIcons() {
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
-}
-
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initLucideIcons();
-    init();
-  });
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  initLucideIcons();
   init();
 }
