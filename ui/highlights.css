@@ -1,19 +1,22 @@
-/* Highlights-specific styles with green-dark gray theme */
+/* Highlights-specific styles with green-dark gray blurry theme */
 
 .highlights-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px 0;
+  gap: 10px;
+  padding: 12px 0;
 }
 
 .highlight-card {
-  background: var(--dark-card);
-  border-radius: 12px;
-  padding: 20px;
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(15px);
+  border-radius: 10px;
+  padding: 12px 14px;
   box-shadow: var(--shadow);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  border-left: 4px solid var(--primary-green);
+  border-left: 3px solid var(--primary-green);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-left: 3px solid var(--primary-green);
   position: relative;
   overflow: hidden;
   animation: slideIn 0.4s ease-out;
@@ -45,23 +48,23 @@
 .highlight-card:hover {
   box-shadow: var(--shadow-lg), var(--glow-green);
   transform: translateY(-4px) translateX(2px);
-  border-left-width: 6px;
+  border-left-width: 4px;
 }
 
 .highlight-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .highlight-type {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 14px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -82,7 +85,7 @@
 
 .highlight-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .highlight-actions .action-icon-btn {
@@ -91,8 +94,8 @@
   border: 1px solid rgba(16, 185, 129, 0.2);
   cursor: pointer;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -115,14 +118,16 @@
   opacity: 1;
 }
 
-.highlight-actions .action-icon-btn .icon {
+.highlight-actions .action-icon-btn .icon,
+.highlight-actions .action-icon-btn img {
   color: var(--primary-green-light);
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   stroke-width: 2;
   position: relative;
   z-index: 1;
   transition: all 0.3s ease;
+  filter: invert(73%) sepia(34%) saturate(492%) hue-rotate(97deg) brightness(95%) contrast(87%);
 }
 
 .highlight-actions .action-icon-btn:hover {
@@ -152,18 +157,18 @@
 }
 
 .highlight-content {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .highlight-text {
-  font-size: 15px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--text-primary);
-  padding: 14px;
+  padding: 10px 12px;
   background: rgba(16, 185, 129, 0.05);
   border-left: 3px solid var(--primary-green);
   border-radius: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   white-space: pre-wrap;
   word-wrap: break-word;
   transition: all 0.3s ease;
@@ -175,10 +180,10 @@
 }
 
 .highlight-description {
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--text-secondary);
-  padding: 14px;
+  padding: 10px 12px;
   background: rgba(15, 23, 42, 0.4);
   border: 1px solid var(--dark-border);
   border-radius: 8px;

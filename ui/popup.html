@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lexis</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="popup-header">
+      <h1>Lexis</h1>
+      <p class="subtitle">AI-Powered Learning</p>
+    </div>
+
+    <div class="popup-content">
+      <a href="flashcards.html" class="popup-card">
+        <div class="card-icon">
+          <img src="icons/book-marked.svg" alt="Flashcards">
+        </div>
+        <h2>Flashcards</h2>
+        <p>Review your AI-generated flashcards</p>
+        <span class="count-badge" id="flashcardCount">0</span>
+      </a>
+
+      <a href="highlights.html" class="popup-card">
+        <div class="card-icon">
+          <img src="icons/notebook-pen.svg" alt="Notes">
+        </div>
+        <h2>Notes</h2>
+        <p>Browse your highlights and notes</p>
+        <span class="count-badge" id="highlightsCount">0</span>
+      </a>
+    </div>
+
+    <div class="popup-footer">
+      <button id="settingsBtn" class="settings-link">
+        <img src="icons/settings.svg" alt="Settings">
+        Settings
+      </button>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
