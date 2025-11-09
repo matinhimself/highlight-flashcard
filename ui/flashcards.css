@@ -33,15 +33,15 @@ body {
   background: var(--dark-bg);
   color: var(--text-primary);
   line-height: 1.6;
-  min-width: 400px;
-  width: 600px;
-  max-height: 600px;
+  min-width: 380px;
+  width: 450px;
+  max-height: 500px;
   overflow: hidden;
 }
 
 .container {
   background: var(--dark-bg);
-  height: 600px;
+  height: 500px;
   display: flex;
   flex-direction: column;
 }
@@ -81,12 +81,18 @@ header::before {
 }
 
 header h1 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 8px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.header-icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
 }
 
 .count-badge {
@@ -111,11 +117,20 @@ header h1 {
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
   font-size: 18px;
-  padding: 8px 12px;
+  padding: 8px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button i {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
 }
 
 .icon-button:hover {
@@ -144,9 +159,21 @@ header h1 {
   position: relative;
 }
 
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+  stroke-width: 2;
+}
+
 .search-container input {
   width: 100%;
-  padding: 10px 36px 10px 14px;
+  padding: 10px 36px 10px 38px;
   background: var(--dark-bg);
   border: 1px solid var(--dark-border);
   border-radius: 8px;
@@ -176,11 +203,19 @@ header h1 {
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 18px;
   padding: 4px;
   opacity: 0.7;
   transition: all 0.2s ease;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-btn i {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
 }
 
 .clear-btn:hover {
@@ -213,9 +248,18 @@ header h1 {
 }
 
 .export-btn {
-  padding: 10px 16px;
-  font-size: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.export-btn i {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
 }
 
 /* Main Content */
@@ -265,10 +309,13 @@ main {
 }
 
 .empty-icon {
-  font-size: 72px;
-  margin-bottom: 20px;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
   opacity: 0.6;
+  color: var(--primary-green);
   animation: float 3s ease-in-out infinite;
+  stroke-width: 1.5;
 }
 
 @keyframes float {
@@ -308,6 +355,10 @@ main {
   position: relative;
   overflow: hidden;
   animation: slideIn 0.4s ease-out;
+}
+
+.flashcard.collapsed {
+  padding: 14px 18px;
 }
 
 @keyframes slideIn {
@@ -369,10 +420,18 @@ main {
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid transparent;
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
-  font-size: 15px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flashcard-actions button i {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
 }
 
 .flashcard-actions button:hover {
@@ -381,11 +440,40 @@ main {
   transform: scale(1.1);
 }
 
+.expand-btn {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.expand-btn i {
+  transition: transform 0.3s ease;
+}
+
+.flashcard.collapsed .expand-btn i {
+  transform: rotate(0deg);
+}
+
+.flashcard:not(.collapsed) .expand-btn i {
+  transform: rotate(180deg);
+}
+
 .flashcard-definition {
   color: var(--text-secondary);
   margin-bottom: 14px;
   line-height: 1.7;
   font-size: 14px;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin 0.3s ease;
+}
+
+.flashcard.collapsed .flashcard-definition {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
+.flashcard:not(.collapsed) .flashcard-definition {
+  max-height: 1000px;
+  opacity: 1;
 }
 
 .flashcard-definition p {
@@ -420,6 +508,21 @@ main {
   color: var(--text-muted);
   padding-top: 12px;
   border-top: 1px solid var(--dark-border);
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+}
+
+.flashcard.collapsed .flashcard-meta {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+
+.flashcard:not(.collapsed) .flashcard-meta {
+  max-height: 100px;
+  opacity: 1;
 }
 
 .flashcard-source {
@@ -590,7 +693,6 @@ main {
 .close-btn {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid transparent;
-  font-size: 24px;
   color: var(--text-secondary);
   cursor: pointer;
   padding: 0;
@@ -601,6 +703,12 @@ main {
   justify-content: center;
   border-radius: 8px;
   transition: all 0.3s ease;
+}
+
+.close-btn i {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
 }
 
 .close-btn:hover {
@@ -761,15 +869,21 @@ main {
 }
 
 .step-icon {
-  font-size: 26px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
-  filter: grayscale(0.7);
+  color: var(--text-muted);
   transition: all 0.4s ease;
+  stroke-width: 2;
 }
 
 .progress-step.active .step-icon {
-  filter: grayscale(0);
+  color: var(--primary-green);
   animation: bounce 0.6s ease-in-out infinite;
+}
+
+.progress-step.completed .step-icon {
+  color: var(--primary-green);
 }
 
 @keyframes bounce {
@@ -839,6 +953,15 @@ main {
   color: white;
   font-size: 21px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-icon {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
 }
 
 .preview-header .close-btn {

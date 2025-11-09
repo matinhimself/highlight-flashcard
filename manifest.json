@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Highlight Flashcard",
+  "name": "Lexis - AI Flashcards",
   "version": "1.0.0",
-  "description": "Create AI-powered flashcards from highlighted text using OpenRouter",
+  "description": "Create AI-powered flashcards from highlighted text. Learn smarter with Lexis.",
   "permissions": [
     "contextMenus",
     "storage",
