@@ -124,7 +124,13 @@ function setupEventListeners() {
   toggleApiKeyBtn.addEventListener('click', () => {
     const type = apiKeyInput.type === 'password' ? 'text' : 'password';
     apiKeyInput.type = type;
-    toggleApiKeyBtn.textContent = type === 'password' ? '👁️' : '🙈';
+    const icon = toggleApiKeyBtn.querySelector('i');
+    if (icon) {
+      icon.setAttribute('data-lucide', type === 'password' ? 'eye' : 'eye-off');
+      if (window.lucide) {
+        window.lucide.createIcons({ nameAttr: 'data-lucide' });
+      }
+    }
   });
 
   // Mark form as dirty on changes
@@ -659,8 +665,12 @@ function createPromptElement(prompt) {
           <span class="toggle-slider"></span>
         </label>
       </div>
-      <button class="icon-button edit" data-id="${prompt.id}" title="Edit">✏️</button>
-      <button class="icon-button delete" data-id="${prompt.id}" title="Delete">🗑️</button>
+      <button class="icon-button edit" data-id="${prompt.id}" title="Edit">
+        <i data-lucide="pencil"></i>
+      </button>
+      <button class="icon-button delete" data-id="${prompt.id}" title="Delete">
+        <i data-lucide="trash-2"></i>
+      </button>
     </div>
   `;
 
@@ -673,6 +683,11 @@ function createPromptElement(prompt) {
 
   const deleteBtn = div.querySelector('.delete');
   deleteBtn.addEventListener('click', () => deleteDescribePromptConfirm(prompt.id));
+
+  // Initialize Lucide icons for this element
+  if (window.lucide) {
+    window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  }
 
   return div;
 }

@@ -250,8 +250,8 @@ function createHighlightElement(highlight) {
 
   // Type badge
   const typeBadge = highlight.type === 'described'
-    ? '<span class="highlight-type described">📝 Described</span>'
-    : '<span class="highlight-type simple">📌 Simple</span>';
+    ? '<span class="highlight-type described"><i data-lucide="file-text"></i> Described</span>'
+    : '<span class="highlight-type simple"><i data-lucide="bookmark"></i> Simple</span>';
 
   // Description section (only for described highlights)
   const descriptionHtml = highlight.description
@@ -261,30 +261,34 @@ function createHighlightElement(highlight) {
   // Meta information
   const metaItems = [
     `<div class="meta-item">
-      <span>📅 ${formattedDate}</span>
+      <span><i data-lucide="calendar"></i> ${formattedDate}</span>
     </div>`,
     `<div class="meta-item">
       <a href="${escapeHtml(highlight.sourceUrl)}" target="_blank" title="${escapeHtml(highlight.sourceUrl)}">
-        🔗 ${escapeHtml(highlight.sourceTitle || domain)}
+        <i data-lucide="link"></i> ${escapeHtml(highlight.sourceTitle || domain)}
       </a>
     </div>`
   ];
 
   if (highlight.promptName) {
-    metaItems.push(`<span class="prompt-badge">💡 ${escapeHtml(highlight.promptName)}</span>`);
+    metaItems.push(`<span class="prompt-badge"><i data-lucide="lightbulb"></i> ${escapeHtml(highlight.promptName)}</span>`);
   }
 
   if (highlight.model) {
     const modelName = highlight.model.split('/').pop();
-    metaItems.push(`<span class="model-badge">🤖 ${escapeHtml(modelName)}</span>`);
+    metaItems.push(`<span class="model-badge"><i data-lucide="cpu"></i> ${escapeHtml(modelName)}</span>`);
   }
 
   card.innerHTML = `
     <div class="highlight-header">
       ${typeBadge}
       <div class="highlight-actions">
-        <button class="edit-btn icon-button" data-id="${highlight.id}" title="Edit">✏️</button>
-        <button class="delete-btn icon-button" data-id="${highlight.id}" title="Delete">🗑️</button>
+        <button class="edit-btn icon-button" data-id="${highlight.id}" title="Edit">
+          <i data-lucide="pencil"></i>
+        </button>
+        <button class="delete-btn icon-button" data-id="${highlight.id}" title="Delete">
+          <i data-lucide="trash-2"></i>
+        </button>
       </div>
     </div>
     <div class="highlight-content">
@@ -299,6 +303,11 @@ function createHighlightElement(highlight) {
   // Add event listeners
   card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(highlight.id));
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(highlight.id));
+
+  // Initialize Lucide icons for this card
+  if (window.lucide) {
+    window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  }
 
   return card;
 }

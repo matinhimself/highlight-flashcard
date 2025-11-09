@@ -91,6 +91,16 @@ header h1 {
   margin-bottom: 10px;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon-settings {
+  width: 32px;
+  height: 32px;
+  stroke-width: 2;
+  color: var(--primary-green);
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
