@@ -250,8 +250,8 @@ function createHighlightElement(highlight) {
 
   // Type badge
   const typeBadge = highlight.type === 'described'
-    ? '<span class="highlight-type described"><i data-lucide="file-text"></i> Described</span>'
-    : '<span class="highlight-type simple"><i data-lucide="bookmark"></i> Simple</span>';
+    ? '<span class="highlight-type described">📝 Described</span>'
+    : '<span class="highlight-type simple">📌 Simple</span>';
 
   // Description section (only for described highlights)
   const descriptionHtml = highlight.description
@@ -261,33 +261,33 @@ function createHighlightElement(highlight) {
   // Meta information
   const metaItems = [
     `<div class="meta-item">
-      <span><i data-lucide="calendar"></i> ${formattedDate}</span>
+      <span>📅 ${formattedDate}</span>
     </div>`,
     `<div class="meta-item">
       <a href="${escapeHtml(highlight.sourceUrl)}" target="_blank" title="${escapeHtml(highlight.sourceUrl)}">
-        <i data-lucide="link"></i> ${escapeHtml(highlight.sourceTitle || domain)}
+        🔗 ${escapeHtml(highlight.sourceTitle || domain)}
       </a>
     </div>`
   ];
 
   if (highlight.promptName) {
-    metaItems.push(`<span class="prompt-badge"><i data-lucide="lightbulb"></i> ${escapeHtml(highlight.promptName)}</span>`);
+    metaItems.push(`<span class="prompt-badge">💡 ${escapeHtml(highlight.promptName)}</span>`);
   }
 
   if (highlight.model) {
     const modelName = highlight.model.split('/').pop();
-    metaItems.push(`<span class="model-badge"><i data-lucide="cpu"></i> ${escapeHtml(modelName)}</span>`);
+    metaItems.push(`<span class="model-badge">🤖 ${escapeHtml(modelName)}</span>`);
   }
 
   card.innerHTML = `
     <div class="highlight-header">
       ${typeBadge}
       <div class="highlight-actions">
-        <button class="edit-btn icon-button" data-id="${highlight.id}" title="Edit">
-          <i data-lucide="pencil"></i>
+        <button class="edit-btn action-icon-btn" data-id="${highlight.id}" title="Edit">
+          <i data-lucide="pencil" class="icon"></i>
         </button>
-        <button class="delete-btn icon-button" data-id="${highlight.id}" title="Delete">
-          <i data-lucide="trash-2"></i>
+        <button class="delete-btn action-icon-btn" data-id="${highlight.id}" title="Delete">
+          <i data-lucide="trash-2" class="icon"></i>
         </button>
       </div>
     </div>
@@ -305,8 +305,11 @@ function createHighlightElement(highlight) {
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(highlight.id));
 
   // Initialize Lucide icons for this card
-  if (window.lucide) {
-    window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons({
+      icons: card.querySelectorAll('[data-lucide]'),
+      attrs: { 'stroke-width': 2 }
+    });
   }
 
   return card;
@@ -624,20 +627,9 @@ async function confirmDelete() {
   }
 }
 
-// Initialize Lucide icons
-function initLucideIcons() {
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
-}
-
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initLucideIcons();
-    init();
-  });
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  initLucideIcons();
   init();
 }

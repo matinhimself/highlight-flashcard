@@ -30,7 +30,6 @@ const CARDS_PER_PAGE = 20;
 let currentEditingId = null;
 let currentDeletingId = null;
 let searchDebounceTimer = null;
-let currentTemplate = null; // Cache for current template
 
 /**
  * Initialize the flashcards page
@@ -168,15 +167,8 @@ async function loadFlashcards(showLoading = false) {
     showSkeletonCards();
   }
 
-  // Load flashcards and template settings
   allFlashcards = await Storage.getFlashcards();
   filteredFlashcards = [...allFlashcards];
-
-  // Load current template setting
-  const settings = await Storage.getSettings();
-  currentTemplate = settings.useDefaultTemplate
-    ? Storage.getDefaultTemplate()
-    : (settings.customTemplate || Storage.getDefaultTemplate());
 
   updateCount();
   renderFlashcards();
@@ -255,7 +247,7 @@ function renderFlashcards(append = false) {
  */
 function createFlashcardElement(flashcard) {
   const card = document.createElement('div');
-  card.className = 'flashcard collapsed';
+  card.className = 'flashcard';
   card.dataset.id = flashcard.id;
 
   // Format flashcard content - handle structured data or plain definition
@@ -274,14 +266,14 @@ function createFlashcardElement(flashcard) {
     <div class="flashcard-header">
       <div class="flashcard-word">${escapeHtml(flashcard.word)}</div>
       <div class="flashcard-actions">
-        <button class="expand-btn" data-id="${flashcard.id}" title="Expand">
-          <i data-lucide="chevron-down"></i>
+        <button class="expand-btn action-icon-btn" data-id="${flashcard.id}" title="Expand">
+          <i data-lucide="chevron-down" class="icon"></i>
         </button>
-        <button class="edit-btn" data-id="${flashcard.id}" title="Edit">
-          <i data-lucide="pencil"></i>
+        <button class="edit-btn action-icon-btn" data-id="${flashcard.id}" title="Edit">
+          <i data-lucide="pencil" class="icon"></i>
         </button>
-        <button class="delete-btn" data-id="${flashcard.id}" title="Delete">
-          <i data-lucide="trash-2"></i>
+        <button class="delete-btn action-icon-btn" data-id="${flashcard.id}" title="Delete">
+          <i data-lucide="trash-2" class="icon"></i>
         </button>
       </div>
     </div>
@@ -298,63 +290,56 @@ function createFlashcardElement(flashcard) {
   `;
 
   // Add event listeners
-  card.querySelector('.expand-btn').addEventListener('click', () => toggleFlashcard(card));
+  card.querySelector('.expand-btn').addEventListener('click', (e) => toggleExpand(e, card));
   card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(flashcard.id));
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(flashcard.id));
 
   // Initialize Lucide icons for this card
-  if (window.lucide) {
-    window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons({
+      icons: card.querySelectorAll('[data-lucide]'),
+      attrs: { 'stroke-width': 2 }
+    });
   }
 
   return card;
 }
 
 /**
- * Toggle flashcard expand/collapse
- * @param {HTMLElement} card - Flashcard element
+ * Toggle expand/collapse for a flashcard
+ * @param {Event} e - Click event
+ * @param {HTMLElement} card - Card element
  */
-function toggleFlashcard(card) {
-  card.classList.toggle('collapsed');
+function toggleExpand(e, card) {
+  e.stopPropagation();
+  const isExpanded = card.classList.contains('expanded');
+  const expandBtn = card.querySelector('.expand-btn i');
 
-  // Re-initialize Lucide icons to update the chevron
-  if (window.lucide) {
-    window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  if (isExpanded) {
+    card.classList.remove('expanded');
+    if (expandBtn) {
+      expandBtn.setAttribute('data-lucide', 'chevron-down');
+      lucide.createIcons();
+    }
+  } else {
+    card.classList.add('expanded');
+    if (expandBtn) {
+      expandBtn.setAttribute('data-lucide', 'chevron-up');
+      lucide.createIcons();
+    }
   }
 }
 
 /**
- * Format structured data from schema using custom template
+ * Format structured data from schema
  * @param {Object} data - Structured flashcard data
- * @param {string} template - Optional custom template to use (defaults to currentTemplate)
  * @returns {string} Formatted HTML
  */
-function formatStructuredData(data, template = null) {
+function formatStructuredData(data) {
   if (!data || typeof data !== 'object') {
     return escapeHtml(String(data));
   }
 
-  // Use provided template or fall back to currentTemplate or default
-  const activeTemplate = template || currentTemplate || Storage.getDefaultTemplate();
-
-  // Render template with data variables
-  const rendered = Storage.renderTemplate(activeTemplate, data);
-
-  // If template rendering succeeded, apply markdown formatting
-  if (rendered && rendered.trim()) {
-    return applyMarkdownFormatting(rendered);
-  }
-
-  // Fallback to field-by-field display if template fails
-  return formatStructuredDataFallback(data);
-}
-
-/**
- * Fallback: Format structured data field-by-field (original implementation)
- * @param {Object} data - Structured flashcard data
- * @returns {string} Formatted HTML
- */
-function formatStructuredDataFallback(data) {
   let html = '';
 
   // Iterate through all fields in the data
@@ -371,7 +356,9 @@ function formatStructuredDataFallback(data) {
     let formattedValue = escapeHtml(String(value));
 
     // Apply markdown-like formatting
-    formattedValue = applyMarkdownFormatting(formattedValue);
+    formattedValue = formattedValue.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    formattedValue = formattedValue.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    formattedValue = formattedValue.replace(/\n/g, '<br>');
 
     html += `<div class="data-field">
       <span class="data-label">${escapeHtml(label)}:</span>
@@ -379,74 +366,27 @@ function formatStructuredDataFallback(data) {
     </div>`;
   }
 
-  return html || applyMarkdownFormatting(data.definition || 'No definition available');
+  return html || formatDefinition(data.definition || 'No definition available');
 }
 
 /**
- * Apply markdown formatting to text
- * Supports: bold, italic, headings, lists, code, line breaks
- * @param {string} text - Text to format
- * @returns {string} Formatted HTML
- */
-function applyMarkdownFormatting(text) {
-  if (!text) return '';
-
-  let formatted = escapeHtml(text);
-
-  // Headings (must be on their own line)
-  // ### Heading 3
-  formatted = formatted.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  // ## Heading 2
-  formatted = formatted.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  // # Heading 1
-  formatted = formatted.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-
-  // Horizontal rules
-  formatted = formatted.replace(/^---$/gm, '<hr>');
-  formatted = formatted.replace(/^\*\*\*$/gm, '<hr>');
-
-  // Code blocks ```code```
-  formatted = formatted.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
-
-  // Inline code `code`
-  formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Bold text **text** (use non-greedy match)
-  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-  // Italic text *text* (use non-greedy match, avoid matching within words)
-  formatted = formatted.replace(/(?<!\w)\*(.+?)\*(?!\w)/g, '<em>$1</em>');
-
-  // Unordered lists - items (lines starting with -)
-  formatted = formatted.replace(/^- (.+)$/gm, '<li>$1</li>');
-  // Wrap consecutive <li> items in <ul>
-  formatted = formatted.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-
-  // Ordered lists - items (lines starting with number.)
-  formatted = formatted.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-
-  // Links [text](url)
-  formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-
-  // Line breaks (convert double newlines to paragraphs, single to <br>)
-  formatted = formatted.replace(/\n\n/g, '</p><p>');
-  formatted = formatted.replace(/\n/g, '<br>');
-
-  // Wrap in paragraph if not already wrapped
-  if (!formatted.startsWith('<')) {
-    formatted = `<p>${formatted}</p>`;
-  }
-
-  return formatted;
-}
-
-/**
- * Format definition with markdown formatting (backward compatibility wrapper)
+ * Format definition with simple markdown-like formatting
  * @param {string} text - Definition text
  * @returns {string} Formatted HTML
  */
 function formatDefinition(text) {
-  return applyMarkdownFormatting(text);
+  let formatted = escapeHtml(text);
+
+  // Bold text **text**
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic text *text*
+  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Line breaks
+  formatted = formatted.replace(/\n/g, '<br>');
+
+  return formatted;
 }
 
 /**
@@ -956,20 +896,9 @@ function closePreviewModal() {
   previewModal.classList.add('hidden');
 }
 
-// Initialize Lucide icons
-function initLucideIcons() {
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
-}
-
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initLucideIcons();
-    init();
-  });
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  initLucideIcons();
   init();
 }
