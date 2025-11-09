@@ -624,9 +624,20 @@ async function confirmDelete() {
   }
 }
 
+// Initialize Lucide icons
+function initLucideIcons() {
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    initLucideIcons();
+    init();
+  });
 } else {
+  initLucideIcons();
   init();
 }
