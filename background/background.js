@@ -243,17 +243,37 @@ async function createFlashcard(selectedText, sourceUrl) {
     // Parse JSON response if using schema
     let flashcardData = {};
     try {
-      // Try to parse as JSON first
-      const parsedData = JSON.parse(result.definition);
-      if (typeof parsedData === 'object' && !Array.isArray(parsedData)) {
-        flashcardData = parsedData;
+      // Clean the response - remove markdown code blocks if present
+      let cleanedResponse = result.definition.trim();
+
+      // Remove markdown code block wrappers (```json ... ``` or ``` ... ```)
+      cleanedResponse = cleanedResponse.replace(/^```(?:json)?\s*\n?/i, '');
+      cleanedResponse = cleanedResponse.replace(/\n?```\s*$/i, '');
+      cleanedResponse = cleanedResponse.trim();
+
+      // Try to parse as JSON
+      const parsedData = JSON.parse(cleanedResponse);
+
+      // Validate it's a proper object with expected fields
+      if (typeof parsedData === 'object' && !Array.isArray(parsedData) && parsedData !== null) {
+        // Check if it has at least one field from the schema
+        const hasValidFields = Object.keys(parsedData).length > 0;
+        if (hasValidFields) {
+          flashcardData = parsedData;
+          console.log('Successfully parsed flashcard data:', flashcardData);
+        } else {
+          console.warn('Parsed JSON is empty, treating as plain text');
+          flashcardData = null; // Will use plain definition fallback
+        }
       } else {
-        // If not a valid object, treat as plain text
-        flashcardData = { definition: result.definition };
+        console.warn('Parsed result is not a valid object, treating as plain text');
+        flashcardData = null; // Will use plain definition fallback
       }
     } catch (e) {
       // If JSON parsing fails, treat as plain text (legacy format)
-      flashcardData = { definition: result.definition };
+      console.warn('Failed to parse JSON response:', e.message);
+      console.log('Raw response:', result.definition);
+      flashcardData = null; // Will use plain definition fallback
     }
 
     // Send progress: Step 3 - Saving
@@ -267,14 +287,18 @@ async function createFlashcard(selectedText, sourceUrl) {
     // Save flashcard with structured data
     const flashcard = {
       word: word.trim(),
-      data: flashcardData, // Structured data from schema
-      definition: flashcardData.definition || result.definition, // Fallback for compatibility
+      definition: result.definition, // Always store raw response as fallback
       sourceUrl: sourceUrl,
       model: settings.selectedModel,
       prompt: prompt,
       schema: schema,
       createdAt: Date.now()
     };
+
+    // Only add structured data if parsing succeeded
+    if (flashcardData && Object.keys(flashcardData).length > 0) {
+      flashcard.data = flashcardData;
+    }
 
     const saved = await Storage.addFlashcard(flashcard);
 
