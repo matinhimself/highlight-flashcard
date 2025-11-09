@@ -247,7 +247,7 @@ function renderFlashcards(append = false) {
  */
 function createFlashcardElement(flashcard) {
   const card = document.createElement('div');
-  card.className = 'flashcard';
+  card.className = 'flashcard collapsed';
   card.dataset.id = flashcard.id;
 
   // Format flashcard content - handle structured data or plain definition
@@ -266,8 +266,15 @@ function createFlashcardElement(flashcard) {
     <div class="flashcard-header">
       <div class="flashcard-word">${escapeHtml(flashcard.word)}</div>
       <div class="flashcard-actions">
-        <button class="edit-btn" data-id="${flashcard.id}" title="Edit">✏️</button>
-        <button class="delete-btn" data-id="${flashcard.id}" title="Delete">🗑️</button>
+        <button class="expand-btn" data-id="${flashcard.id}" title="Expand">
+          <i data-lucide="chevron-down"></i>
+        </button>
+        <button class="edit-btn" data-id="${flashcard.id}" title="Edit">
+          <i data-lucide="pencil"></i>
+        </button>
+        <button class="delete-btn" data-id="${flashcard.id}" title="Delete">
+          <i data-lucide="trash-2"></i>
+        </button>
       </div>
     </div>
     <div class="flashcard-definition">${formattedDefinition}</div>
@@ -283,10 +290,29 @@ function createFlashcardElement(flashcard) {
   `;
 
   // Add event listeners
+  card.querySelector('.expand-btn').addEventListener('click', () => toggleFlashcard(card));
   card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(flashcard.id));
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(flashcard.id));
 
+  // Initialize Lucide icons for this card
+  if (window.lucide) {
+    window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  }
+
   return card;
+}
+
+/**
+ * Toggle flashcard expand/collapse
+ * @param {HTMLElement} card - Flashcard element
+ */
+function toggleFlashcard(card) {
+  card.classList.toggle('collapsed');
+
+  // Re-initialize Lucide icons to update the chevron
+  if (window.lucide) {
+    window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  }
 }
 
 /**
