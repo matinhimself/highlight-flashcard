@@ -192,7 +192,7 @@ body {
 }
 
 .popup-footer {
-  padding: 16px 24px;
+  padding: 16px 24px 24px;
   border-top: 1px solid rgba(16, 185, 129, 0.2);
   display: flex;
   justify-content: center;
