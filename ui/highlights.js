@@ -284,10 +284,10 @@ function createHighlightElement(highlight) {
       ${typeBadge}
       <div class="highlight-actions">
         <button class="edit-btn action-icon-btn" data-id="${highlight.id}" title="Edit">
-          <i data-lucide="pencil" class="icon"></i>
+          <img src="icons/pencil.svg" class="icon" alt="Edit">
         </button>
         <button class="delete-btn action-icon-btn" data-id="${highlight.id}" title="Delete">
-          <i data-lucide="trash-2" class="icon"></i>
+          <img src="icons/trash-2.svg" class="icon" alt="Delete">
         </button>
       </div>
     </div>
@@ -303,14 +303,6 @@ function createHighlightElement(highlight) {
   // Add event listeners
   card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(highlight.id));
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(highlight.id));
-
-  // Initialize Lucide icons for this card
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons({
-      icons: card.querySelectorAll('[data-lucide]'),
-      attrs: { 'stroke-width': 2 }
-    });
-  }
 
   return card;
 }

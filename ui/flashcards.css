@@ -92,7 +92,23 @@ header h1 {
 .header-icon {
   width: 24px;
   height: 24px;
-  stroke-width: 2;
+  display: block;
+}
+
+/* General icon styling for all SVG images */
+img[src$=".svg"] {
+  display: block;
+  color: currentColor;
+}
+
+.icon,
+.search-icon,
+.empty-icon,
+.step-icon,
+.preview-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 
 .count-badge {
@@ -124,10 +140,11 @@ header h1 {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.icon-button svg {
+.icon-button svg,
+.icon-button img {
   width: 18px;
   height: 18px;
-  stroke-width: 2;
+  display: block;
 }
 
 .icon-button:hover {
