@@ -283,8 +283,12 @@ function createHighlightElement(highlight) {
     <div class="highlight-header">
       ${typeBadge}
       <div class="highlight-actions">
-        <button class="edit-btn icon-button" data-id="${highlight.id}" title="Edit">✏️</button>
-        <button class="delete-btn icon-button" data-id="${highlight.id}" title="Delete">🗑️</button>
+        <button class="edit-btn action-icon-btn" data-id="${highlight.id}" title="Edit">
+          <span class="icon">✎</span>
+        </button>
+        <button class="delete-btn action-icon-btn" data-id="${highlight.id}" title="Delete">
+          <span class="icon">✕</span>
+        </button>
       </div>
     </div>
     <div class="highlight-content">

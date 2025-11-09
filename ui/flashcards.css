@@ -361,24 +361,74 @@ main {
 
 .flashcard-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.flashcard-actions button {
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid transparent;
+.action-icon-btn {
+  background: rgba(16, 185, 129, 0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(16, 185, 129, 0.2);
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 6px;
-  font-size: 15px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-.flashcard-actions button:hover {
+.action-icon-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 185, 129, 0.05);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.action-icon-btn:hover::before {
+  opacity: 1;
+}
+
+.action-icon-btn .icon {
+  color: var(--primary-green-light);
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+.action-icon-btn:hover {
   background: rgba(16, 185, 129, 0.2);
   border-color: var(--primary-green);
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.action-icon-btn:hover .icon {
+  color: var(--accent-green);
   transform: scale(1.1);
+}
+
+.action-icon-btn:active {
+  transform: scale(0.95);
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--danger-color);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.delete-btn:hover .icon {
+  color: #fca5a5;
 }
 
 .flashcard-definition {

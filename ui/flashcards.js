@@ -266,8 +266,12 @@ function createFlashcardElement(flashcard) {
     <div class="flashcard-header">
       <div class="flashcard-word">${escapeHtml(flashcard.word)}</div>
       <div class="flashcard-actions">
-        <button class="edit-btn" data-id="${flashcard.id}" title="Edit">✏️</button>
-        <button class="delete-btn" data-id="${flashcard.id}" title="Delete">🗑️</button>
+        <button class="edit-btn action-icon-btn" data-id="${flashcard.id}" title="Edit">
+          <span class="icon">✎</span>
+        </button>
+        <button class="delete-btn action-icon-btn" data-id="${flashcard.id}" title="Delete">
+          <span class="icon">✕</span>
+        </button>
       </div>
     </div>
     <div class="flashcard-definition">${formattedDefinition}</div>
