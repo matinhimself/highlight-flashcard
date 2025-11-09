@@ -346,21 +346,30 @@ function toggleExpand(e, card) {
  */
 function formatStructuredData(data, template = null) {
   if (!data || typeof data !== 'object') {
+    console.warn('Invalid flashcard data:', data);
     return escapeHtml(String(data));
   }
 
   // Use provided template or fall back to currentTemplate or default
   const activeTemplate = template || currentTemplate || Storage.getDefaultTemplate();
 
+  console.log('Rendering flashcard with template:', activeTemplate);
+  console.log('Flashcard data:', data);
+
   // Render template with data variables
   const rendered = Storage.renderTemplate(activeTemplate, data);
 
+  console.log('Rendered template:', rendered);
+
   // If template rendering succeeded, apply markdown formatting
   if (rendered && rendered.trim()) {
-    return applyMarkdownFormatting(rendered);
+    const formatted = applyMarkdownFormatting(rendered);
+    console.log('Formatted HTML:', formatted);
+    return formatted;
   }
 
   // Fallback to field-by-field display if template fails
+  console.warn('Template rendering failed, using fallback');
   return formatStructuredDataFallback(data);
 }
 
