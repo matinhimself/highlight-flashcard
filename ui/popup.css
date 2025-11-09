@@ -24,8 +24,8 @@ body {
   background: var(--dark-bg);
   color: var(--text-primary);
   line-height: 1.6;
-  width: 350px;
-  height: 450px;
+  width: 400px;
+  height: 300px;
   overflow: hidden;
 }
 
@@ -86,9 +86,10 @@ body {
   flex: 1;
   padding: 24px;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-direction: row;
+  gap: 12px;
   justify-content: center;
+  align-items: stretch;
   position: relative;
   z-index: 1;
 }
@@ -97,8 +98,8 @@ body {
   background: rgba(30, 41, 59, 0.6);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 16px 12px;
   text-decoration: none;
   color: var(--text-primary);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -109,6 +110,8 @@ body {
   flex-direction: column;
   align-items: center;
   text-align: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .popup-card::before {
@@ -135,14 +138,14 @@ body {
 }
 
 .card-icon {
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
-  border-radius: 14px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   border: 1px solid rgba(16, 185, 129, 0.3);
   transition: all 0.3s ease;
 }
@@ -154,34 +157,35 @@ body {
 }
 
 .card-icon img {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   filter: invert(73%) sepia(34%) saturate(492%) hue-rotate(97deg) brightness(95%) contrast(87%);
 }
 
 .popup-card h2 {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--primary-green-light);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .popup-card p {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--text-secondary);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  line-height: 1.4;
 }
 
 .count-badge {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 10px;
+  right: 10px;
   background: rgba(16, 185, 129, 0.2);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(16, 185, 129, 0.4);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--accent-green);
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);

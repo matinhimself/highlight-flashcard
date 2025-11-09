@@ -945,16 +945,24 @@ async function showFlashcardPreview(flashcard) {
   const domain = extractDomain(flashcard.sourceUrl);
 
   previewContainer.innerHTML = `
-    <div class="flashcard-word">${escapeHtml(flashcard.word)}</div>
-    <div class="flashcard-definition">${formattedDefinition}</div>
-    <div class="flashcard-meta">
-      <div class="flashcard-source">
-        <span>Source:</span>
-        <a href="${escapeHtml(flashcard.sourceUrl)}" target="_blank" title="${escapeHtml(flashcard.sourceUrl)}">
-          ${escapeHtml(domain)}
-        </a>
+    <div class="preview-section">
+      <h3 class="preview-section-title">Flashcard</h3>
+      <div class="flashcard-word">${escapeHtml(flashcard.word)}</div>
+      <div class="flashcard-definition">${formattedDefinition}</div>
+      <div class="flashcard-meta">
+        <div class="flashcard-source">
+          <span>Source:</span>
+          <a href="${escapeHtml(flashcard.sourceUrl)}" target="_blank" title="${escapeHtml(flashcard.sourceUrl)}">
+            ${escapeHtml(domain)}
+          </a>
+        </div>
+        <div class="flashcard-date">${formattedDate}</div>
       </div>
-      <div class="flashcard-date">${formattedDate}</div>
+    </div>
+    <div class="preview-divider"></div>
+    <div class="preview-section">
+      <h3 class="preview-section-title">AI Response</h3>
+      <div class="ai-response">${applyMarkdownFormatting(flashcard.definition)}</div>
     </div>
   `;
 
