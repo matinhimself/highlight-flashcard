@@ -19,6 +19,8 @@ let highlightsBtn;
 let emptySettingsBtn;
 let editModal;
 let deleteModal;
+let loadingModal;
+let previewModal;
 
 // State
 let allFlashcards = [];
@@ -48,9 +50,14 @@ async function init() {
   emptySettingsBtn = document.getElementById('emptySettingsBtn');
   editModal = document.getElementById('editModal');
   deleteModal = document.getElementById('deleteModal');
+  loadingModal = document.getElementById('loadingModal');
+  previewModal = document.getElementById('previewModal');
 
   // Set up event listeners
   setupEventListeners();
+
+  // Set up message listener for background script
+  setupMessageListener();
 
   // Load flashcards with loading indicator
   await loadFlashcards(true);
@@ -90,6 +97,10 @@ function setupEventListeners() {
   document.getElementById('cancelDelete').addEventListener('click', closeDeleteModal);
   document.getElementById('confirmDelete').addEventListener('click', confirmDelete);
 
+  // Preview modal
+  document.getElementById('closePreviewModal').addEventListener('click', closePreviewModal);
+  document.getElementById('closePreview').addEventListener('click', closePreviewModal);
+
   // Close modal on background click
   editModal.addEventListener('click', (e) => {
     if (e.target === editModal) {
@@ -103,18 +114,47 @@ function setupEventListeners() {
     }
   });
 
+  previewModal.addEventListener('click', (e) => {
+    if (e.target === previewModal) {
+      closePreviewModal();
+    }
+  });
+
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     // Escape to close modals
     if (e.key === 'Escape') {
       closeEditModal();
       closeDeleteModal();
+      closePreviewModal();
     }
 
     // Ctrl/Cmd + F to focus search
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
       e.preventDefault();
       searchInput.focus();
+    }
+  });
+}
+
+/**
+ * Set up message listener for background script communications
+ */
+function setupMessageListener() {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('Received message:', message);
+
+    switch (message.type) {
+      case 'FLASHCARD_PROGRESS':
+        updateLoadingProgress(message.step, message.status, message.text);
+        break;
+      case 'FLASHCARD_CREATED':
+        showFlashcardPreview(message.flashcard);
+        break;
+      case 'FLASHCARD_ERROR':
+        hideLoadingModal();
+        showNotification('error', message.error || 'Failed to create flashcard');
+        break;
     }
   });
 }
@@ -707,6 +747,112 @@ function showNotification(type, message) {
       document.body.removeChild(notification);
     }, 300);
   }, 3000);
+}
+
+/**
+ * Update loading progress modal
+ * @param {number} step - Step number (1-3)
+ * @param {string} status - Status ('active', 'completed', or 'waiting')
+ * @param {string} text - Optional loading text
+ */
+function updateLoadingProgress(step, status, text = '') {
+  // Show loading modal if hidden
+  if (loadingModal.classList.contains('hidden')) {
+    loadingModal.classList.remove('hidden');
+  }
+
+  // Update step status
+  for (let i = 1; i <= 3; i++) {
+    const stepElement = document.getElementById(`step${i}`);
+    stepElement.classList.remove('active', 'completed');
+
+    if (i < step) {
+      stepElement.classList.add('completed');
+    } else if (i === step) {
+      stepElement.classList.add(status);
+    }
+  }
+
+  // Update step statuses with custom text based on step
+  if (step === 1) {
+    document.querySelector('#step1 .step-status').textContent = status === 'active' ? 'Preparing request...' : 'Ready';
+  } else if (step === 2) {
+    document.querySelector('#step2 .step-status').textContent = status === 'active' ? 'Generating definition...' : (status === 'completed' ? 'Complete' : 'Waiting...');
+  } else if (step === 3) {
+    document.querySelector('#step3 .step-status').textContent = status === 'active' ? 'Saving flashcard...' : (status === 'completed' ? 'Saved!' : 'Waiting...');
+  }
+
+  // Update loading text if provided
+  if (text) {
+    document.getElementById('loadingText').textContent = text;
+  }
+}
+
+/**
+ * Hide loading modal
+ */
+function hideLoadingModal() {
+  loadingModal.classList.add('hidden');
+
+  // Reset progress steps
+  for (let i = 1; i <= 3; i++) {
+    const stepElement = document.getElementById(`step${i}`);
+    stepElement.classList.remove('active', 'completed');
+  }
+
+  // Clear loading text
+  document.getElementById('loadingText').textContent = '';
+}
+
+/**
+ * Show flashcard preview modal
+ * @param {Object} flashcard - Created flashcard data
+ */
+async function showFlashcardPreview(flashcard) {
+  // Hide loading modal
+  hideLoadingModal();
+
+  // Create flashcard preview HTML
+  const previewContainer = document.getElementById('previewFlashcard');
+
+  // Format flashcard content
+  const formattedDefinition = flashcard.data
+    ? formatStructuredData(flashcard.data)
+    : formatDefinition(flashcard.definition);
+
+  // Format date
+  const date = new Date(flashcard.createdAt);
+  const formattedDate = formatDate(date);
+
+  // Extract domain from URL
+  const domain = extractDomain(flashcard.sourceUrl);
+
+  previewContainer.innerHTML = `
+    <div class="flashcard-word">${escapeHtml(flashcard.word)}</div>
+    <div class="flashcard-definition">${formattedDefinition}</div>
+    <div class="flashcard-meta">
+      <div class="flashcard-source">
+        <span>Source:</span>
+        <a href="${escapeHtml(flashcard.sourceUrl)}" target="_blank" title="${escapeHtml(flashcard.sourceUrl)}">
+          ${escapeHtml(domain)}
+        </a>
+      </div>
+      <div class="flashcard-date">${formattedDate}</div>
+    </div>
+  `;
+
+  // Show preview modal
+  previewModal.classList.remove('hidden');
+
+  // Reload flashcards to show the new one in the list
+  await loadFlashcards();
+}
+
+/**
+ * Close preview modal
+ */
+function closePreviewModal() {
+  previewModal.classList.add('hidden');
 }
 
 // Initialize when DOM is ready
