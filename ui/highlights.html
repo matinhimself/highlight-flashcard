@@ -33,15 +33,35 @@
       </div>
 
       <div class="toolbar-actions">
-        <select id="filterSelect">
-          <option value="all">All Highlights</option>
-          <option value="described">With Description</option>
-          <option value="simple">Simple Highlights</option>
-        </select>
-        <select id="sortSelect">
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-        </select>
+        <!-- Custom Tag Selector Dropdown -->
+        <div class="custom-dropdown" id="tagDropdown">
+          <button class="dropdown-toggle" id="tagToggle">
+            <span class="dropdown-label">All Tags</span>
+            <img src="icons/chevron-down.svg" class="dropdown-icon" alt="">
+          </button>
+          <div class="dropdown-menu hidden" id="tagMenu">
+            <div class="dropdown-search">
+              <input type="text" id="tagSearch" placeholder="Search tags..." />
+            </div>
+            <div class="dropdown-items" id="tagItems">
+              <div class="dropdown-item active" data-value="all">All Tags</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Sort Dropdown -->
+        <div class="custom-dropdown" id="sortDropdown">
+          <button class="dropdown-toggle" id="sortToggle">
+            <span class="dropdown-label">Newest First</span>
+            <img src="icons/chevron-down.svg" class="dropdown-icon" alt="">
+          </button>
+          <div class="dropdown-menu hidden" id="sortMenu">
+            <div class="dropdown-items">
+              <div class="dropdown-item active" data-value="newest">Newest First</div>
+              <div class="dropdown-item" data-value="oldest">Oldest First</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
