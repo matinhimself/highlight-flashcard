@@ -41,6 +41,59 @@
     </div>
   </div>
 
+  <!-- Loading Progress Modal -->
+  <div id="loadingModal" class="modal hidden">
+    <div class="modal-content loading-content">
+      <div class="loading-header">
+        <div class="loading-spinner"></div>
+        <h2 id="loadingTitle">Creating Flashcard...</h2>
+      </div>
+      <div class="loading-body">
+        <div class="progress-steps">
+          <div class="progress-step" id="step1">
+            <div class="step-icon">📝</div>
+            <div class="step-info">
+              <div class="step-title">Preparing</div>
+              <div class="step-status">Getting ready...</div>
+            </div>
+          </div>
+          <div class="progress-step" id="step2">
+            <div class="step-icon">✨</div>
+            <div class="step-info">
+              <div class="step-title">AI Processing</div>
+              <div class="step-status">Waiting...</div>
+            </div>
+          </div>
+          <div class="progress-step" id="step3">
+            <div class="step-icon">💾</div>
+            <div class="step-info">
+              <div class="step-title">Saving</div>
+              <div class="step-status">Waiting...</div>
+            </div>
+          </div>
+        </div>
+        <div class="loading-text" id="loadingText"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="successModal" class="modal hidden">
+    <div class="modal-content success-content">
+      <div class="success-header">
+        <div class="success-icon">✓</div>
+        <h2>Flashcard Created!</h2>
+      </div>
+      <div class="success-body">
+        <p>Your flashcard has been successfully created.</p>
+        <div class="success-actions">
+          <button id="viewFlashcardsBtn" class="button primary">View Flashcards</button>
+          <button id="closeSuccessBtn" class="button secondary">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="popup.js"></script>
 </body>
 </html>
