@@ -24,8 +24,8 @@ body {
   background: var(--dark-bg);
   color: var(--text-primary);
   line-height: 1.6;
-  width: 400px;
-  height: 300px;
+  width: 450px;
+  height: 550px;
   overflow: hidden;
 }
 
@@ -84,7 +84,7 @@ body {
 
 .popup-content {
   flex: 1;
-  padding: 24px;
+  padding: 24px 24px 32px 24px;
   display: flex;
   flex-direction: row;
   gap: 12px;
