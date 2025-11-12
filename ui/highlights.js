@@ -173,12 +173,18 @@ function applyFiltersAndSort() {
   const query = searchInput.value.trim();
   if (query !== '') {
     const lowerQuery = query.toLowerCase();
-    filteredHighlights = filteredHighlights.filter(h =>
-      h.text.toLowerCase().includes(lowerQuery) ||
-      (h.description && h.description.toLowerCase().includes(lowerQuery)) ||
-      (h.sourceUrl && h.sourceUrl.toLowerCase().includes(lowerQuery)) ||
-      (h.sourceTitle && h.sourceTitle.toLowerCase().includes(lowerQuery))
-    );
+    filteredHighlights = filteredHighlights.filter(h => {
+      const matchesText = h.text.toLowerCase().includes(lowerQuery) ||
+        (h.description && h.description.toLowerCase().includes(lowerQuery)) ||
+        (h.sourceUrl && h.sourceUrl.toLowerCase().includes(lowerQuery)) ||
+        (h.sourceTitle && h.sourceTitle.toLowerCase().includes(lowerQuery));
+
+      const matchesTags = h.tags && h.tags.some(tag =>
+        tag.toLowerCase().includes(lowerQuery)
+      );
+
+      return matchesText || matchesTags;
+    });
   }
 
   // Apply sort
@@ -258,6 +264,13 @@ function createHighlightElement(highlight) {
     ? `<div class="highlight-description">${formatDescription(highlight.description)}</div>`
     : '';
 
+  // Tags section (only if tags exist)
+  const tagsHtml = highlight.tags && highlight.tags.length > 0
+    ? `<div class="highlight-tags">
+        ${highlight.tags.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('')}
+      </div>`
+    : '';
+
   // Meta information
   const metaItems = [
     `<div class="meta-item">
@@ -294,6 +307,7 @@ function createHighlightElement(highlight) {
     <div class="highlight-content">
       <div class="highlight-text">${escapeHtml(highlight.text)}</div>
       ${descriptionHtml}
+      ${tagsHtml}
     </div>
     <div class="highlight-meta">
       ${metaItems.join('')}
