@@ -8,8 +8,14 @@ import Storage from '../lib/storage.js';
 let highlightsCount;
 let searchInput;
 let clearSearchBtn;
-let filterSelect;
-let sortSelect;
+let tagDropdown;
+let tagToggle;
+let tagMenu;
+let tagItems;
+let tagSearch;
+let sortDropdown;
+let sortToggle;
+let sortMenu;
 let emptyState;
 let highlightsList;
 let loadMoreContainer;
@@ -22,11 +28,14 @@ let deleteModal;
 // State
 let allHighlights = [];
 let filteredHighlights = [];
+let allTags = [];
 let displayedCount = 0;
 const ITEMS_PER_PAGE = 20;
 let currentEditingId = null;
 let currentDeletingId = null;
 let searchDebounceTimer = null;
+let selectedTag = 'all';
+let selectedSort = 'newest';
 
 /**
  * Initialize the highlights page
@@ -36,8 +45,14 @@ async function init() {
   highlightsCount = document.getElementById('highlightsCount');
   searchInput = document.getElementById('searchInput');
   clearSearchBtn = document.getElementById('clearSearch');
-  filterSelect = document.getElementById('filterSelect');
-  sortSelect = document.getElementById('sortSelect');
+  tagDropdown = document.getElementById('tagDropdown');
+  tagToggle = document.getElementById('tagToggle');
+  tagMenu = document.getElementById('tagMenu');
+  tagItems = document.getElementById('tagItems');
+  tagSearch = document.getElementById('tagSearch');
+  sortDropdown = document.getElementById('sortDropdown');
+  sortToggle = document.getElementById('sortToggle');
+  sortMenu = document.getElementById('sortMenu');
   emptyState = document.getElementById('emptyState');
   highlightsList = document.getElementById('highlightsList');
   loadMoreContainer = document.getElementById('loadMoreContainer');
@@ -52,6 +67,9 @@ async function init() {
 
   // Load highlights with loading indicator
   await loadHighlights(true);
+
+  // Load tags after highlights are loaded
+  await loadTagsDropdown();
 }
 
 /**
@@ -61,14 +79,27 @@ function setupEventListeners() {
   // Search
   searchInput.addEventListener('input', () => {
     clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(handleSearch, 300);
+    searchDebounceTimer = setTimeout(() => {
+      const query = searchInput.value.trim();
+      if (query === '') {
+        clearSearchBtn.classList.add('hidden');
+      } else {
+        clearSearchBtn.classList.remove('hidden');
+      }
+      applyFiltersAndSort();
+      updateCount();
+      renderHighlights();
+    }, 300);
   });
 
   clearSearchBtn.addEventListener('click', clearSearch);
 
-  // Filter and sort
-  filterSelect.addEventListener('change', handleFilter);
-  sortSelect.addEventListener('change', handleSort);
+  // Custom dropdowns
+  setupCustomDropdown(tagToggle, tagMenu);
+  setupCustomDropdown(sortToggle, sortMenu);
+
+  // Tag search
+  tagSearch.addEventListener('input', filterTagsDropdown);
 
   // Navigation buttons
   settingsBtn.addEventListener('click', openSettings);
@@ -161,12 +192,14 @@ function updateCount() {
  * Apply filters and sorting
  */
 function applyFiltersAndSort() {
-  // Apply type filter
-  const filterType = filterSelect.value;
-  if (filterType === 'all') {
-    filteredHighlights = [...allHighlights];
-  } else {
-    filteredHighlights = allHighlights.filter(h => h.type === filterType);
+  // Start with all highlights
+  filteredHighlights = [...allHighlights];
+
+  // Apply tag filter
+  if (selectedTag !== 'all') {
+    filteredHighlights = filteredHighlights.filter(h =>
+      h.tags && h.tags.includes(selectedTag)
+    );
   }
 
   // Apply search if active
@@ -188,8 +221,7 @@ function applyFiltersAndSort() {
   }
 
   // Apply sort
-  const sortBy = sortSelect.value;
-  switch (sortBy) {
+  switch (selectedSort) {
     case 'newest':
       filteredHighlights.sort((a, b) => b.createdAt - a.createdAt);
       break;
@@ -267,7 +299,7 @@ function createHighlightElement(highlight) {
   // Tags section (only if tags exist)
   const tagsHtml = highlight.tags && highlight.tags.length > 0
     ? `<div class="highlight-tags">
-        ${highlight.tags.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('')}
+        ${highlight.tags.map(tag => `<span class="tag clickable-tag" data-tag="${escapeHtml(tag)}">#${escapeHtml(tag)}</span>`).join('')}
       </div>`
     : '';
 
@@ -317,6 +349,15 @@ function createHighlightElement(highlight) {
   // Add event listeners
   card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(highlight.id));
   card.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(highlight.id));
+
+  // Add click listeners to tags
+  const tagElements = card.querySelectorAll('.clickable-tag');
+  tagElements.forEach(tagEl => {
+    tagEl.addEventListener('click', () => {
+      const tag = tagEl.dataset.tag;
+      handleTagClick(tag);
+    });
+  });
 
   return card;
 }
@@ -450,18 +491,144 @@ function clearSearch() {
 }
 
 /**
- * Handle filter change
+ * Set up custom dropdown
+ * @param {HTMLElement} toggle - Toggle button
+ * @param {HTMLElement} menu - Dropdown menu
  */
-function handleFilter() {
+function setupCustomDropdown(toggle, menu) {
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = !menu.classList.contains('hidden');
+
+    // Close all other dropdowns
+    document.querySelectorAll('.dropdown-menu').forEach(m => {
+      if (m !== menu) m.classList.add('hidden');
+    });
+
+    // Toggle this dropdown
+    if (isOpen) {
+      menu.classList.add('hidden');
+    } else {
+      menu.classList.remove('hidden');
+    }
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', () => {
+    menu.classList.add('hidden');
+  });
+
+  // Prevent closing when clicking inside menu
+  menu.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+}
+
+/**
+ * Load tags into dropdown
+ */
+async function loadTagsDropdown() {
+  allTags = await Storage.getAllTags();
+
+  // Build dropdown items
+  tagItems.innerHTML = `
+    <div class="dropdown-item active" data-value="all">All Tags</div>
+    ${allTags.map(tag => `
+      <div class="dropdown-item" data-value="${escapeHtml(tag)}">
+        <span class="tag-count">#</span>${escapeHtml(tag)}
+      </div>
+    `).join('')}
+  `;
+
+  // Add click listeners
+  tagItems.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', () => handleTagSelect(item.dataset.value));
+  });
+
+  // Set up sort dropdown listeners
+  sortMenu.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', () => handleSortSelect(item.dataset.value));
+  });
+}
+
+/**
+ * Filter tags in dropdown search
+ */
+function filterTagsDropdown() {
+  const query = tagSearch.value.toLowerCase().trim();
+  const items = tagItems.querySelectorAll('.dropdown-item');
+
+  items.forEach(item => {
+    const tag = item.dataset.value.toLowerCase();
+    if (tag === 'all' || tag.includes(query)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
+/**
+ * Handle tag selection from dropdown
+ * @param {string} tag - Selected tag value
+ */
+function handleTagSelect(tag) {
+  selectedTag = tag;
+
+  // Update dropdown label
+  const label = tagToggle.querySelector('.dropdown-label');
+  label.textContent = tag === 'all' ? 'All Tags' : `#${tag}`;
+
+  // Update active state
+  tagItems.querySelectorAll('.dropdown-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.value === tag);
+  });
+
+  // Close dropdown
+  tagMenu.classList.add('hidden');
+
+  // Apply filter
   applyFiltersAndSort();
   updateCount();
   renderHighlights();
 }
 
 /**
- * Handle sort change
+ * Handle tag click from highlight card
+ * @param {string} tag - Tag that was clicked
  */
-function handleSort() {
+function handleTagClick(tag) {
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Select the tag in dropdown and filter
+  handleTagSelect(tag);
+}
+
+/**
+ * Handle sort selection
+ * @param {string} sort - Sort value
+ */
+function handleSortSelect(sort) {
+  selectedSort = sort;
+
+  // Update dropdown label
+  const label = sortToggle.querySelector('.dropdown-label');
+  const sortLabels = {
+    'newest': 'Newest First',
+    'oldest': 'Oldest First'
+  };
+  label.textContent = sortLabels[sort] || 'Newest First';
+
+  // Update active state
+  sortMenu.querySelectorAll('.dropdown-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.value === sort);
+  });
+
+  // Close dropdown
+  sortMenu.classList.add('hidden');
+
+  // Apply sort
   applyFiltersAndSort();
   renderHighlights();
 }
