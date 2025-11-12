@@ -406,18 +406,79 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
   chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
 
   try {
+    // Build the prompt (with schema if enabled)
+    let finalPrompt = describePrompt.prompt;
+
+    if (describePrompt.useSchema) {
+      // Get existing tags for this prompt to suggest
+      const existingTags = await Storage.getAllTags(promptId);
+
+      // Get schema
+      const schema = describePrompt.schema || Storage.getDefaultDescribeSchema();
+
+      // Build prompt with schema and existing tags
+      finalPrompt = Storage.buildDescribePromptWithSchema(
+        describePrompt.prompt,
+        schema,
+        existingTags
+      );
+    }
+
     // Create API client and generate description
     const client = new OpenRouterClient(settings.apiKey, settings.selectedModel);
-    const result = await client.createDefinition(text, describePrompt.prompt);
+    const result = await client.createDefinition(text, finalPrompt);
 
     if (!result.success) {
       throw new Error(result.error);
     }
 
-    // Save to highlights with description
+    // Parse response if using schema
+    let descriptionData = {};
+    let tags = [];
+    let description = result.definition;
+
+    if (describePrompt.useSchema) {
+      try {
+        // Clean the response - remove markdown code blocks if present
+        let cleanedResponse = result.definition.trim();
+        cleanedResponse = cleanedResponse.replace(/^```(?:json)?\s*\n?/i, '');
+        cleanedResponse = cleanedResponse.replace(/\n?```\s*$/i, '');
+        cleanedResponse = cleanedResponse.trim();
+
+        // Parse JSON
+        const parsedData = JSON.parse(cleanedResponse);
+
+        if (typeof parsedData === 'object' && !Array.isArray(parsedData) && parsedData !== null) {
+          descriptionData = parsedData;
+
+          // Extract tags
+          if (parsedData.tags) {
+            if (Array.isArray(parsedData.tags)) {
+              tags = parsedData.tags;
+            } else if (typeof parsedData.tags === 'string') {
+              // Handle comma-separated string
+              tags = parsedData.tags.split(',').map(t => t.trim()).filter(t => t);
+            }
+          }
+
+          // Use summary as description if available
+          if (parsedData.summary) {
+            description = parsedData.summary;
+          }
+
+          console.log('Successfully parsed describe data:', descriptionData);
+        }
+      } catch (e) {
+        // If JSON parsing fails, treat as plain text
+        console.warn('Failed to parse JSON response:', e.message);
+        console.log('Raw response:', result.definition);
+      }
+    }
+
+    // Save to highlights with description and tags
     const highlight = {
       text: text.trim(),
-      description: result.definition,
+      description: description,
       sourceUrl: sourceUrl,
       sourceTitle: sourceTitle || extractDomain(sourceUrl),
       promptName: describePrompt.name,
@@ -426,6 +487,16 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
       type: 'described',
       createdAt: Date.now()
     };
+
+    // Add structured data if available
+    if (Object.keys(descriptionData).length > 0) {
+      highlight.data = descriptionData;
+    }
+
+    // Add tags if available
+    if (tags.length > 0) {
+      highlight.tags = tags;
+    }
 
     const saved = await Storage.addHighlight(highlight);
 
