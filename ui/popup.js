@@ -7,14 +7,27 @@ import Storage from '../lib/storage.js';
 // DOM elements
 let loadingModal;
 let successModal;
+let flashcardsList;
+let highlightsList;
+let flashcardsEmpty;
+let highlightsEmpty;
+
+// State
+let currentTab = 'flashcards';
+const MAX_POPUP_ITEMS = 8;
 
 // Initialize popup
 async function init() {
   // Get DOM elements
   loadingModal = document.getElementById('loadingModal');
   successModal = document.getElementById('successModal');
+  flashcardsList = document.getElementById('flashcardsList');
+  highlightsList = document.getElementById('highlightsList');
+  flashcardsEmpty = document.getElementById('flashcardsEmpty');
+  highlightsEmpty = document.getElementById('highlightsEmpty');
 
   await loadCounts();
+  await loadRecentItems();
   setupEventListeners();
   setupMessageListener();
 }
@@ -35,6 +48,153 @@ async function loadCounts() {
 }
 
 /**
+ * Load recent flashcards and highlights
+ */
+async function loadRecentItems() {
+  try {
+    // Load flashcards
+    const flashcards = await Storage.getFlashcards();
+    const recentFlashcards = flashcards.slice(0, MAX_POPUP_ITEMS);
+
+    if (recentFlashcards.length === 0) {
+      flashcardsEmpty.classList.remove('hidden');
+      flashcardsList.innerHTML = '';
+    } else {
+      flashcardsEmpty.classList.add('hidden');
+      flashcardsList.innerHTML = recentFlashcards.map(card => createFlashcardItem(card)).join('');
+    }
+
+    // Load highlights
+    const highlights = await Storage.getHighlights();
+    const recentHighlights = highlights.slice(0, MAX_POPUP_ITEMS);
+
+    if (recentHighlights.length === 0) {
+      highlightsEmpty.classList.remove('hidden');
+      highlightsList.innerHTML = '';
+    } else {
+      highlightsEmpty.classList.add('hidden');
+      highlightsList.innerHTML = recentHighlights.map(highlight => createHighlightItem(highlight)).join('');
+    }
+
+    // Add click listeners to items
+    attachItemClickListeners();
+  } catch (error) {
+    console.error('Error loading recent items:', error);
+  }
+}
+
+/**
+ * Create flashcard list item HTML
+ */
+function createFlashcardItem(flashcard) {
+  const date = formatDate(new Date(flashcard.createdAt));
+  return `
+    <div class="list-item" data-type="flashcard" data-id="${flashcard.id}">
+      <div class="item-icon">
+        <img src="icons/book-marked.svg" alt="">
+      </div>
+      <div class="item-content">
+        <div class="item-title">${escapeHtml(flashcard.word)}</div>
+        <div class="item-meta">${date}</div>
+      </div>
+      <div class="item-arrow">
+        <img src="icons/chevron-down.svg" alt="" style="transform: rotate(-90deg);">
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Create highlight list item HTML
+ */
+function createHighlightItem(highlight) {
+  const date = formatDate(new Date(highlight.createdAt));
+  const truncatedText = highlight.text.length > 60
+    ? highlight.text.substring(0, 60) + '...'
+    : highlight.text;
+  const typeIcon = highlight.type === 'described' ? '📝' : '📌';
+
+  return `
+    <div class="list-item" data-type="highlight" data-id="${highlight.id}">
+      <div class="item-icon type-badge">${typeIcon}</div>
+      <div class="item-content">
+        <div class="item-title">${escapeHtml(truncatedText)}</div>
+        <div class="item-meta">${date}</div>
+      </div>
+      <div class="item-arrow">
+        <img src="icons/chevron-down.svg" alt="" style="transform: rotate(-90deg);">
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Attach click listeners to list items
+ */
+function attachItemClickListeners() {
+  document.querySelectorAll('.list-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const type = item.dataset.type;
+      const id = item.dataset.id;
+      openItemInFullpage(type, id);
+    });
+  });
+}
+
+/**
+ * Open an item in fullpage with modal
+ */
+function openItemInFullpage(type, id) {
+  const tab = type === 'flashcard' ? 'flashcards' : 'highlights';
+  const url = chrome.runtime.getURL(`ui/fullpage-study.html#${tab}?id=${id}&modal=detail`);
+  chrome.tabs.create({ url });
+}
+
+/**
+ * Format date as relative
+ */
+function formatDate(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/**
+ * Escape HTML
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Switch between tabs
+ */
+function switchTab(tab) {
+  currentTab = tab;
+
+  // Update tab buttons
+  document.querySelectorAll('.popup-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+
+  // Update panels
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `${tab}Panel`);
+  });
+}
+
+/**
  * Set up event listeners
  */
 function setupEventListeners() {
@@ -47,12 +207,19 @@ function setupEventListeners() {
   const closeSuccessBtn = document.getElementById('closeSuccessBtn');
   closeSuccessBtn.addEventListener('click', closeSuccessModal);
 
-  // Open fullpage study hub when clicking cards
-  const flashcardsCard = document.getElementById('flashcardsCard');
-  flashcardsCard.addEventListener('click', () => openStudyHub('flashcards'));
+  // Tab switching
+  document.querySelectorAll('.popup-tab').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
 
-  const highlightsCard = document.getElementById('highlightsCard');
-  highlightsCard.addEventListener('click', () => openStudyHub('highlights'));
+  // Open fullpage buttons
+  document.getElementById('openFlashcardsFullpage').addEventListener('click', () => {
+    openStudyHub('flashcards');
+  });
+
+  document.getElementById('openHighlightsFullpage').addEventListener('click', () => {
+    openStudyHub('highlights');
+  });
 }
 
 /**
@@ -69,6 +236,7 @@ function setupMessageListener() {
       case 'FLASHCARD_CREATED':
         showSuccessModal();
         loadCounts(); // Refresh counts
+        loadRecentItems(); // Refresh items list
         break;
       case 'FLASHCARD_ERROR':
         hideLoadingModal();

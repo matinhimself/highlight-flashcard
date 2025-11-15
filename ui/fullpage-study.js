@@ -80,10 +80,24 @@ async function init() {
     // Load saved preferences
     await loadPreferences();
 
-    // Check URL hash for initial tab
+    // Check URL hash for initial tab and URL parameters
     const hash = window.location.hash.substring(1);
-    if (hash === 'flashcards' || hash === 'highlights') {
-        currentTab = hash;
+    let itemId = null;
+    let shouldOpenModal = false;
+
+    // Parse hash and query params (e.g., #flashcards?id=abc123&modal=detail)
+    if (hash) {
+        const [tabPart, queryPart] = hash.split('?');
+        if (tabPart === 'flashcards' || tabPart === 'highlights') {
+            currentTab = tabPart;
+        }
+
+        // Parse query parameters
+        if (queryPart) {
+            const params = new URLSearchParams(queryPart);
+            itemId = params.get('id');
+            shouldOpenModal = params.get('modal') === 'detail';
+        }
     }
 
     // Set up initial tab state (update UI without rendering)
@@ -91,6 +105,15 @@ async function init() {
 
     // Load data (this will render the content)
     await loadData();
+
+    // Auto-open detail modal if item ID is in URL
+    if (itemId && shouldOpenModal) {
+        console.log('Auto-opening detail modal for item:', itemId);
+        setTimeout(() => {
+            const itemType = currentTab === 'flashcards' ? 'flashcard' : 'highlight';
+            openDetailModal(itemId, itemType);
+        }, 300); // Small delay to ensure rendering is complete
+    }
 
     console.log('Initialization complete');
 }
