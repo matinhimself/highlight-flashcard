@@ -777,6 +777,122 @@ input:checked + .toggle-slider:before {
   background: rgba(15, 23, 42, 0.3);
 }
 
+/* Google Drive Sync Section */
+.drive-status-section {
+  padding: 20px;
+  background: var(--dark-bg);
+  border-radius: 12px;
+  border: 1px solid var(--dark-border);
+}
+
+.info-box {
+  margin-bottom: 20px;
+}
+
+.info-box p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.info-box strong {
+  color: var(--primary-green-light);
+  font-size: 16px;
+}
+
+.success-box {
+  margin-bottom: 20px;
+}
+
+.user-info-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--dark-surface);
+  border-radius: 10px;
+  border: 1px solid var(--dark-border);
+}
+
+.user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--primary-green);
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-email {
+  color: var(--primary-green-light);
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.sync-status {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--dark-surface);
+  border-radius: 8px;
+}
+
+.benefit-icon {
+  width: 20px;
+  height: 20px;
+  filter: invert(73%) sepia(43%) saturate(426%) hue-rotate(98deg) brightness(95%) contrast(89%);
+}
+
+.benefit-item span {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sync-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-text p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.info-text strong {
+  color: var(--text-primary);
+}
+
+.button.danger-outline {
+  background: transparent;
+  border: 1px solid var(--danger-color);
+  color: #fca5a5;
+}
+
+.button.danger-outline:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
 /* Utilities */
 .hidden {
   display: none !important;

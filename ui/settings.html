@@ -87,6 +87,71 @@
         </div>
       </section>
 
+      <!-- Google Drive Sync Section -->
+      <section class="settings-section">
+        <h2>Google Drive Storage & Sync</h2>
+
+        <div id="drive-not-connected" class="drive-status-section">
+          <div class="info-box">
+            <p><strong>Cloud Sync Disabled</strong></p>
+            <p>Connect your Google Drive to automatically sync your flashcards and highlights across all your devices.</p>
+          </div>
+
+          <div class="benefits-list">
+            <div class="benefit-item">
+              <img src="icons/cloud.svg" alt="" class="benefit-icon">
+              <span>Automatic cloud backup</span>
+            </div>
+            <div class="benefit-item">
+              <img src="icons/sync.svg" alt="" class="benefit-icon">
+              <span>Sync across devices</span>
+            </div>
+            <div class="benefit-item">
+              <img src="icons/shield.svg" alt="" class="benefit-icon">
+              <span>Your data, your control</span>
+            </div>
+          </div>
+
+          <button id="connectDrive" class="button primary">
+            <img src="icons/google-drive.svg" alt="" style="width: 18px; height: 18px; margin-right: 8px;">
+            Connect Google Drive
+          </button>
+        </div>
+
+        <div id="drive-connected" class="drive-status-section hidden">
+          <div class="success-box">
+            <div class="user-info-box">
+              <img id="userAvatar" src="" alt="User" class="user-avatar" />
+              <div class="user-details">
+                <p class="user-email" id="userEmail"></p>
+                <p class="sync-status" id="syncStatus">Checking sync status...</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="sync-controls">
+              <button id="syncNow" class="button secondary">
+                <img src="icons/sync.svg" alt="" style="width: 16px; height: 16px; margin-right: 6px;">
+                Sync Now
+              </button>
+              <span id="syncStatusBadge" class="status-badge hidden"></span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="info-text">
+              <p><strong>Storage Location:</strong> Google Drive / Lexis Extension Data</p>
+              <p class="help-text">Your flashcards and highlights are stored in your personal Google Drive. Only you can access this data.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button id="disconnectDrive" class="button danger-outline">Sign Out from Google Drive</button>
+          </div>
+        </div>
+      </section>
+
       <!-- Prompt Configuration Section -->
       <section class="settings-section">
         <h2>Prompt Configuration</h2>

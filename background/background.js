@@ -5,6 +5,7 @@
 
 import Storage from '../lib/storage.js';
 import OpenRouterClient from './api.js';
+import { driveClient } from './drive-api.js';
 
 // Context menu IDs
 const CONTEXT_MENU_ID = 'create-flashcard';
@@ -693,5 +694,147 @@ function sendMessageToPopup(message) {
     console.log('Could not send message to popup:', error.message);
   });
 }
+
+// ===========================
+// Google Drive Sync Handlers
+// ===========================
+
+let syncTimer = null;
+const SYNC_DEBOUNCE_DELAY = 2000; // 2 seconds
+
+/**
+ * Queue a sync operation (debounced)
+ */
+function queueSync() {
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+  }
+
+  syncTimer = setTimeout(async () => {
+    await performSync();
+  }, SYNC_DEBOUNCE_DELAY);
+}
+
+/**
+ * Perform sync with Google Drive
+ */
+async function performSync() {
+  try {
+    const config = await chrome.storage.local.get(['googleDriveEnabled']);
+    if (!config.googleDriveEnabled) {
+      return; // Sync disabled
+    }
+
+    // Check if authenticated
+    const isAuth = await driveClient.isAuthenticated();
+    if (!isAuth) {
+      console.log('Not authenticated, skipping sync');
+      return;
+    }
+
+    // Perform full sync
+    const result = await driveClient.performFullSync(Storage);
+
+    console.log('Sync completed:', result);
+
+    // Notify UI if needed
+    if (result.flashcardsUpdated || result.highlightsUpdated) {
+      sendMessageToPopup({
+        type: 'SYNC_COMPLETED',
+        result: result
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Sync failed:', error);
+
+    // Notify UI of error
+    sendMessageToPopup({
+      type: 'SYNC_ERROR',
+      error: error.message
+    });
+
+    throw error;
+  }
+}
+
+/**
+ * Perform initial sync on extension startup
+ */
+async function performInitialSync() {
+  try {
+    const config = await chrome.storage.local.get(['googleDriveEnabled', 'initialSyncDone']);
+
+    if (!config.googleDriveEnabled) {
+      return;
+    }
+
+    // Only do initial sync once per session
+    if (config.initialSyncDone) {
+      return;
+    }
+
+    const isAuth = await driveClient.isAuthenticated();
+    if (!isAuth) {
+      return;
+    }
+
+    console.log('Performing initial sync...');
+    await performSync();
+
+    await chrome.storage.local.set({ initialSyncDone: true });
+  } catch (error) {
+    console.error('Initial sync failed:', error);
+  }
+}
+
+// Handle sync messages
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'QUEUE_SYNC') {
+    queueSync();
+    sendResponse({ success: true });
+    return true;
+  }
+
+  if (request.type === 'SYNC_NOW') {
+    performSync()
+      .then(result => sendResponse({ success: true, result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (request.type === 'INITIAL_SYNC') {
+    performSync()
+      .then(result => sendResponse({ success: true, result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (request.type === 'SIGN_OUT_DRIVE') {
+    driveClient.signOut()
+      .then(() => {
+        chrome.storage.local.set({
+          googleDriveEnabled: false,
+          googleDriveUser: null,
+          lastSyncTimestamp: null
+        });
+        sendResponse({ success: true });
+      })
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+});
+
+// Perform initial sync on startup (if enabled)
+performInitialSync();
+
+// Periodic sync every 5 minutes (if enabled)
+setInterval(async () => {
+  const config = await chrome.storage.local.get(['googleDriveEnabled']);
+  if (config.googleDriveEnabled) {
+    await performSync().catch(err => console.error('Periodic sync failed:', err));
+  }
+}, 5 * 60 * 1000); // 5 minutes
 
 console.log('Background service worker loaded');

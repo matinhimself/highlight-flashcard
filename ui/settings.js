@@ -936,9 +936,182 @@ async function refreshContextMenu() {
   }
 }
 
+// ===========================
+// Google Drive Sync Functions
+// ===========================
+
+/**
+ * Initialize Google Drive UI
+ */
+async function initGoogleDrive() {
+  const driveNotConnected = document.getElementById('drive-not-connected');
+  const driveConnected = document.getElementById('drive-connected');
+  const connectDriveBtn = document.getElementById('connectDrive');
+  const disconnectDriveBtn = document.getElementById('disconnectDrive');
+  const syncNowBtn = document.getElementById('syncNow');
+
+  // Check if Google Drive is connected
+  const config = await chrome.storage.local.get(['googleDriveEnabled', 'googleDriveUser']);
+
+  if (config.googleDriveEnabled && config.googleDriveUser) {
+    // Show connected state
+    driveNotConnected.classList.add('hidden');
+    driveConnected.classList.remove('hidden');
+
+    // Update user info
+    document.getElementById('userEmail').textContent = config.googleDriveUser.email;
+    if (config.googleDriveUser.picture) {
+      document.getElementById('userAvatar').src = config.googleDriveUser.picture;
+    }
+
+    // Update sync status
+    await updateSyncStatus();
+  } else {
+    // Show not connected state
+    driveNotConnected.classList.remove('hidden');
+    driveConnected.classList.add('hidden');
+  }
+
+  // Event listeners
+  connectDriveBtn?.addEventListener('click', handleConnectDrive);
+  disconnectDriveBtn?.addEventListener('click', handleDisconnectDrive);
+  syncNowBtn?.addEventListener('click', handleSyncNow);
+}
+
+/**
+ * Handle connect to Google Drive
+ */
+async function handleConnectDrive() {
+  // Open login page
+  window.location.href = 'login.html';
+}
+
+/**
+ * Handle disconnect from Google Drive
+ */
+async function handleDisconnectDrive() {
+  if (!confirm('Are you sure you want to sign out from Google Drive?\n\nYour flashcards and highlights will remain on your device, but will no longer sync with Google Drive.')) {
+    return;
+  }
+
+  try {
+    // Send message to background to sign out
+    await chrome.runtime.sendMessage({ type: 'SIGN_OUT_DRIVE' });
+
+    showNotification('Signed out from Google Drive', 'success');
+
+    // Reload page to update UI
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  } catch (error) {
+    showNotification('Failed to sign out: ' + error.message, 'error');
+  }
+}
+
+/**
+ * Handle manual sync
+ */
+async function handleSyncNow() {
+  const syncNowBtn = document.getElementById('syncNow');
+  const syncStatusBadge = document.getElementById('syncStatusBadge');
+
+  try {
+    // Disable button
+    syncNowBtn.disabled = true;
+    syncNowBtn.textContent = 'Syncing...';
+
+    // Show syncing badge
+    syncStatusBadge.textContent = 'Syncing...';
+    syncStatusBadge.className = 'status-badge info';
+    syncStatusBadge.classList.remove('hidden');
+
+    // Send sync message
+    const response = await chrome.runtime.sendMessage({ type: 'SYNC_NOW' });
+
+    if (response.success) {
+      syncStatusBadge.textContent = 'Synced';
+      syncStatusBadge.className = 'status-badge success';
+
+      // Update sync status
+      await updateSyncStatus();
+
+      showNotification('Sync completed successfully', 'success');
+
+      // Hide badge after 3 seconds
+      setTimeout(() => {
+        syncStatusBadge.classList.add('hidden');
+      }, 3000);
+    } else {
+      throw new Error(response.error || 'Sync failed');
+    }
+  } catch (error) {
+    syncStatusBadge.textContent = 'Sync failed';
+    syncStatusBadge.className = 'status-badge error';
+
+    showNotification('Sync failed: ' + error.message, 'error');
+
+    // Hide badge after 5 seconds
+    setTimeout(() => {
+      syncStatusBadge.classList.add('hidden');
+    }, 5000);
+  } finally {
+    // Re-enable button
+    syncNowBtn.disabled = false;
+    syncNowBtn.innerHTML = '<img src="icons/sync.svg" alt="" style="width: 16px; height: 16px; margin-right: 6px;">Sync Now';
+  }
+}
+
+/**
+ * Update sync status display
+ */
+async function updateSyncStatus() {
+  const syncStatus = document.getElementById('syncStatus');
+  const config = await chrome.storage.local.get(['lastSyncTimestamp']);
+
+  if (config.lastSyncTimestamp) {
+    const lastSync = new Date(config.lastSyncTimestamp);
+    const now = new Date();
+    const diffMs = now - lastSync;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    let timeAgo;
+    if (diffMins < 1) {
+      timeAgo = 'just now';
+    } else if (diffMins < 60) {
+      timeAgo = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    } else {
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) {
+        timeAgo = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      } else {
+        const diffDays = Math.floor(diffHours / 24);
+        timeAgo = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      }
+    }
+
+    syncStatus.textContent = `Last synced: ${timeAgo}`;
+  } else {
+    syncStatus.textContent = 'Never synced';
+  }
+}
+
+/**
+ * Listen for sync events
+ */
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'SYNC_COMPLETED') {
+    updateSyncStatus();
+  }
+});
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    init();
+    initGoogleDrive();
+  });
 } else {
   init();
+  initGoogleDrive();
 }

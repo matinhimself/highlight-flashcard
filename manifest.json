@@ -6,11 +6,19 @@
   "permissions": [
     "contextMenus",
     "storage",
-    "notifications"
+    "notifications",
+    "identity"
   ],
   "host_permissions": [
-    "https://openrouter.ai/*"
+    "https://openrouter.ai/*",
+    "https://www.googleapis.com/*"
   ],
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.file"
+    ]
+  },
   "background": {
     "service_worker": "background/background.js",
     "type": "module"
