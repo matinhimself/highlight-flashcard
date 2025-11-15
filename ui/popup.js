@@ -46,6 +46,13 @@ function setupEventListeners() {
 
   const closeSuccessBtn = document.getElementById('closeSuccessBtn');
   closeSuccessBtn.addEventListener('click', closeSuccessModal);
+
+  // Open fullpage study hub when clicking cards
+  const flashcardsCard = document.getElementById('flashcardsCard');
+  flashcardsCard.addEventListener('click', () => openStudyHub('flashcards'));
+
+  const highlightsCard = document.getElementById('highlightsCard');
+  highlightsCard.addEventListener('click', () => openStudyHub('highlights'));
 }
 
 /**
@@ -144,7 +151,15 @@ function closeSuccessModal() {
  * Open flashcards page
  */
 function openFlashcards() {
-  window.location.href = 'flashcards.html';
+  openStudyHub('flashcards');
+}
+
+/**
+ * Open fullpage study hub
+ */
+function openStudyHub(tab = 'flashcards') {
+  const url = chrome.runtime.getURL(`ui/fullpage-study.html#${tab}`);
+  chrome.tabs.create({ url });
 }
 
 /**
