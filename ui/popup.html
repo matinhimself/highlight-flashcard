@@ -13,23 +13,56 @@
       <p class="subtitle">AI-Powered Learning</p>
     </div>
 
+    <!-- Tab Navigation -->
+    <div class="popup-tabs">
+      <button class="popup-tab active" data-tab="flashcards">
+        <img src="icons/book-marked.svg" alt="Flashcards">
+        <span>Flashcards</span>
+        <span class="tab-count" id="flashcardCount">0</span>
+      </button>
+      <button class="popup-tab" data-tab="highlights">
+        <img src="icons/notebook-pen.svg" alt="Notes">
+        <span>Notes</span>
+        <span class="tab-count" id="highlightsCount">0</span>
+      </button>
+    </div>
+
+    <!-- Tab Contents -->
     <div class="popup-content">
-      <div class="popup-card" id="flashcardsCard">
-        <div class="card-icon">
-          <img src="icons/book-marked.svg" alt="Flashcards">
+      <!-- Flashcards List -->
+      <div class="tab-panel active" id="flashcardsPanel">
+        <div class="panel-header">
+          <h3>Recent Flashcards</h3>
+          <button class="open-fullpage-btn" id="openFlashcardsFullpage" title="Open in full page">
+            <img src="icons/external-link.svg" alt="Open in full page">
+          </button>
         </div>
-        <h2>Flashcards</h2>
-        <p>Review your AI-generated flashcards</p>
-        <span class="count-badge" id="flashcardCount">0</span>
+        <div class="items-list" id="flashcardsList">
+          <!-- Flashcards will be rendered here -->
+        </div>
+        <div class="empty-state hidden" id="flashcardsEmpty">
+          <img src="icons/book-open.svg" alt="">
+          <p>No flashcards yet</p>
+          <small>Highlight text to create one</small>
+        </div>
       </div>
 
-      <div class="popup-card" id="highlightsCard">
-        <div class="card-icon">
-          <img src="icons/notebook-pen.svg" alt="Notes">
+      <!-- Highlights List -->
+      <div class="tab-panel" id="highlightsPanel">
+        <div class="panel-header">
+          <h3>Recent Highlights</h3>
+          <button class="open-fullpage-btn" id="openHighlightsFullpage" title="Open in full page">
+            <img src="icons/external-link.svg" alt="Open in full page">
+          </button>
         </div>
-        <h2>Notes</h2>
-        <p>Browse your highlights and notes</p>
-        <span class="count-badge" id="highlightsCount">0</span>
+        <div class="items-list" id="highlightsList">
+          <!-- Highlights will be rendered here -->
+        </div>
+        <div class="empty-state hidden" id="highlightsEmpty">
+          <img src="icons/notebook-text.svg" alt="">
+          <p>No highlights yet</p>
+          <small>Highlight text to save one</small>
+        </div>
       </div>
     </div>
 
