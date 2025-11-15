@@ -60,7 +60,21 @@ async function handleSignIn() {
 
   } catch (error) {
     console.error('Sign-in failed:', error);
-    errorMessage.textContent = error.message || 'Failed to sign in. Please try again.';
+
+    // Provide helpful error messages
+    let userMessage = error.message || 'Failed to sign in. Please try again.';
+
+    if (error.message.includes('OAuth Client ID not configured')) {
+      userMessage = 'OAuth not configured. Please follow the setup guide in GOOGLE_DRIVE_SETUP.md to configure your Google Cloud credentials.';
+    } else if (error.message.includes('not supported')) {
+      // Detect browser
+      const isEdge = navigator.userAgent.includes('Edg/');
+      if (isEdge) {
+        userMessage = 'For Microsoft Edge, you need to create a "Web application" OAuth client (not Chrome Extension). See GOOGLE_DRIVE_SETUP.md for Edge-specific instructions.';
+      }
+    }
+
+    errorMessage.textContent = userMessage;
     showSection(errorSection);
   }
 }

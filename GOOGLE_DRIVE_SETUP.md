@@ -10,6 +10,12 @@ The Lexis extension now supports automatic cloud backup and sync using Google Dr
 - 🔄 Sync across all your devices
 - 🔒 Your data, your control (stored in your Drive, not on external servers)
 
+**Browser Compatibility:**
+- ✅ Google Chrome (fully supported)
+- ✅ Microsoft Edge (fully supported with launchWebAuthFlow)
+- ✅ Brave, Opera (Chromium-based browsers)
+- ⚠️ Firefox (limited support - requires different OAuth setup)
+
 ## Setup Instructions
 
 ### 1. Google Cloud Console Setup
@@ -51,6 +57,10 @@ To enable Google Drive integration, you need to create OAuth 2.0 credentials:
 
 #### Step 4: Create OAuth 2.0 Client ID
 
+**IMPORTANT:** The setup differs slightly for Chrome vs. Edge:
+
+##### For Chrome Users:
+
 1. Go to **APIs & Services** → **Credentials**
 2. Click **Create Credentials** → **OAuth client ID**
 3. Select **Application type:** Chrome Extension
@@ -66,6 +76,25 @@ To enable Google Drive integration, you need to create OAuth 2.0 credentials:
 6. Paste the Extension ID in the OAuth configuration
 7. Click **Create**
 8. Copy the **Client ID** (format: `XXXXX.apps.googleusercontent.com`)
+
+##### For Microsoft Edge Users:
+
+1. Go to **APIs & Services** → **Credentials**
+2. Click **Create Credentials** → **OAuth client ID**
+3. Select **Application type:** Web application
+4. **Name:** Lexis Extension OAuth (Edge)
+5. **Authorized redirect URIs:**
+   - Add: `https://<your-extension-id>.chromiumapp.org/`
+   - To get the Extension ID for Edge:
+     1. Open Edge and go to `edge://extensions/`
+     2. Enable "Developer mode" (left sidebar)
+     3. Click "Load unpacked" and select your extension folder
+     4. Copy the Extension ID shown under your extension
+   - Replace `<your-extension-id>` in the redirect URI with your actual ID
+6. Click **Create**
+7. Copy the **Client ID** (format: `XXXXX.apps.googleusercontent.com`)
+
+**Note:** The extension will automatically use the correct authentication method for your browser. Chrome uses `getAuthToken()`, while Edge uses `launchWebAuthFlow()`.
 
 #### Step 5: Update manifest.json
 
@@ -173,9 +202,12 @@ The extension only requests:
 
 **Solutions:**
 1. Verify Client ID in `manifest.json` matches Google Cloud Console
-2. Ensure Extension ID in Google Cloud Console matches actual extension ID
-3. Check that Google Drive API is enabled in your project
-4. Verify you added your email as a test user (if using external consent screen)
+2. **For Edge users:** Ensure you created a "Web application" OAuth client (not Chrome Extension)
+3. **For Edge users:** Verify the redirect URI includes your extension ID: `https://<extension-id>.chromiumapp.org/`
+4. Ensure Extension ID in Google Cloud Console matches actual extension ID
+5. Check that Google Drive API is enabled in your project
+6. Verify you added your email as a test user (if using external consent screen)
+7. Check browser console (F12) for detailed error messages
 
 ### "Not authenticated" in Console
 
@@ -228,9 +260,12 @@ If you plan to publish the extension:
 
 1. Use separate Google account for testing
 2. Add test email in OAuth consent screen
-3. Extension ID changes each time you reload unpacked extension
+3. **Chrome:** Extension ID changes each time you reload unpacked extension
    - Update OAuth credentials each time during development
    - OR: Keep the same extension folder to maintain ID
+4. **Edge:** Extension ID is more stable but can change
+   - Update redirect URI if ID changes
+5. Clear token storage when testing: `chrome.storage.local.remove(['googleDriveToken', 'googleDriveTokenExpiry'])`
 
 ### Debugging
 

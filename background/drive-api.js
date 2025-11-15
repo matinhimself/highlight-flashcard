@@ -38,13 +38,59 @@ class GoogleDriveClient {
   }
 
   /**
-   * Authenticate with Google using Chrome Identity API
+   * Get OAuth client ID from manifest
+   * @returns {string} Client ID
+   */
+  getClientId() {
+    const manifest = chrome.runtime.getManifest();
+    return manifest.oauth2?.client_id;
+  }
+
+  /**
+   * Authenticate with Google using launchWebAuthFlow (Edge/Chrome compatible)
    * @param {boolean} interactive - Whether to show login UI
    * @returns {Promise<string>} OAuth token
    */
   async authenticate(interactive = true) {
+    // Check if we have a stored token first
+    const stored = await chrome.storage.local.get(['googleDriveToken', 'googleDriveTokenExpiry']);
+
+    if (stored.googleDriveToken && stored.googleDriveTokenExpiry) {
+      // Check if token is still valid (with 5 minute buffer)
+      if (Date.now() < stored.googleDriveTokenExpiry - 5 * 60 * 1000) {
+        this.token = stored.googleDriveToken;
+        return this.token;
+      }
+    }
+
+    // If not interactive and no valid token, fail
+    if (!interactive) {
+      throw new Error('Not authenticated');
+    }
+
+    // Try chrome.identity.getAuthToken first (works on Chrome)
+    if (typeof chrome.identity.getAuthToken === 'function') {
+      try {
+        const token = await this.authenticateWithGetAuthToken();
+        this.token = token;
+        await this.storeToken(token);
+        return token;
+      } catch (error) {
+        console.log('getAuthToken failed, falling back to launchWebAuthFlow:', error.message);
+      }
+    }
+
+    // Fallback to launchWebAuthFlow (works on Edge and other browsers)
+    return this.authenticateWithWebAuthFlow();
+  }
+
+  /**
+   * Authenticate using chrome.identity.getAuthToken (Chrome only)
+   * @returns {Promise<string>} OAuth token
+   */
+  async authenticateWithGetAuthToken() {
     return new Promise((resolve, reject) => {
-      chrome.identity.getAuthToken({ interactive }, (token) => {
+      chrome.identity.getAuthToken({ interactive: true }, (token) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
           return;
@@ -53,10 +99,94 @@ class GoogleDriveClient {
           reject(new Error('No token received'));
           return;
         }
-        this.token = token;
         resolve(token);
       });
     });
+  }
+
+  /**
+   * Authenticate using launchWebAuthFlow (Edge/Chrome/Firefox compatible)
+   * @returns {Promise<string>} OAuth token
+   */
+  async authenticateWithWebAuthFlow() {
+    const clientId = this.getClientId();
+    if (!clientId || clientId === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
+      throw new Error('OAuth Client ID not configured. Please see GOOGLE_DRIVE_SETUP.md');
+    }
+
+    const redirectUrl = chrome.identity.getRedirectURL();
+    const scopes = ['https://www.googleapis.com/auth/drive.file'];
+
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('response_type', 'token');
+    authUrl.searchParams.set('redirect_uri', redirectUrl);
+    authUrl.searchParams.set('scope', scopes.join(' '));
+
+    return new Promise((resolve, reject) => {
+      chrome.identity.launchWebAuthFlow(
+        {
+          url: authUrl.toString(),
+          interactive: true
+        },
+        (responseUrl) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+
+          if (!responseUrl) {
+            reject(new Error('No response URL received'));
+            return;
+          }
+
+          // Parse the token from the redirect URL
+          // Format: chrome-extension://...#access_token=TOKEN&token_type=Bearer&expires_in=3599
+          try {
+            const url = new URL(responseUrl);
+            const params = new URLSearchParams(url.hash.substring(1)); // Remove # and parse
+            const token = params.get('access_token');
+            const expiresIn = parseInt(params.get('expires_in') || '3600');
+
+            if (!token) {
+              reject(new Error('No access token in response'));
+              return;
+            }
+
+            this.token = token;
+
+            // Store token with expiry
+            this.storeToken(token, expiresIn).then(() => {
+              resolve(token);
+            });
+
+          } catch (error) {
+            reject(new Error('Failed to parse auth response: ' + error.message));
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Store token with expiry time
+   * @param {string} token - OAuth token
+   * @param {number} expiresIn - Seconds until expiry (default 3600)
+   */
+  async storeToken(token, expiresIn = 3600) {
+    const expiryTime = Date.now() + (expiresIn * 1000);
+    await chrome.storage.local.set({
+      googleDriveToken: token,
+      googleDriveTokenExpiry: expiryTime
+    });
+  }
+
+  /**
+   * Clear stored token
+   */
+  async clearToken() {
+    await chrome.storage.local.remove(['googleDriveToken', 'googleDriveTokenExpiry']);
+    this.token = null;
   }
 
   /**
@@ -64,40 +194,51 @@ class GoogleDriveClient {
    * @returns {Promise<string>} New OAuth token
    */
   async refreshToken() {
-    if (!this.token) {
-      return this.authenticate(false);
-    }
+    // Clear old token
+    await this.clearToken();
 
-    return new Promise((resolve, reject) => {
-      chrome.identity.removeCachedAuthToken({ token: this.token }, async () => {
-        try {
-          const newToken = await this.authenticate(false);
-          resolve(newToken);
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
+    // Get new token (non-interactive will fail, then we do interactive)
+    try {
+      return await this.authenticate(true);
+    } catch (error) {
+      throw new Error('Failed to refresh token: ' + error.message);
+    }
   }
 
   /**
    * Sign out and revoke token
    */
   async signOut() {
-    if (!this.token) return;
+    if (!this.token) {
+      await this.clearToken();
+      return;
+    }
 
-    return new Promise((resolve) => {
-      chrome.identity.removeCachedAuthToken({ token: this.token }, () => {
-        // Revoke token on Google's servers
-        fetch(`https://accounts.google.com/o/oauth2/revoke?token=${this.token}`)
-          .finally(() => {
-            this.token = null;
-            this.folderId = null;
-            this.fileCache.clear();
+    // Revoke token on Google's servers
+    try {
+      await fetch(`https://accounts.google.com/o/oauth2/revoke?token=${this.token}`);
+    } catch (error) {
+      console.warn('Failed to revoke token on server:', error);
+    }
+
+    // Clear local token
+    await this.clearToken();
+
+    // Try to clear cached token (Chrome only)
+    if (typeof chrome.identity.removeCachedAuthToken === 'function') {
+      try {
+        await new Promise((resolve) => {
+          chrome.identity.removeCachedAuthToken({ token: this.token }, () => {
             resolve();
           });
-      });
-    });
+        });
+      } catch (error) {
+        console.warn('Failed to clear cached token:', error);
+      }
+    }
+
+    this.folderId = null;
+    this.fileCache.clear();
   }
 
   /**
@@ -105,12 +246,18 @@ class GoogleDriveClient {
    * @returns {Promise<boolean>}
    */
   async isAuthenticated() {
-    try {
-      await this.authenticate(false);
-      return true;
-    } catch (error) {
-      return false;
+    // Check for stored valid token
+    const stored = await chrome.storage.local.get(['googleDriveToken', 'googleDriveTokenExpiry']);
+
+    if (stored.googleDriveToken && stored.googleDriveTokenExpiry) {
+      // Check if token is still valid (with 5 minute buffer)
+      if (Date.now() < stored.googleDriveTokenExpiry - 5 * 60 * 1000) {
+        this.token = stored.googleDriveToken;
+        return true;
+      }
     }
+
+    return false;
   }
 
   /**
