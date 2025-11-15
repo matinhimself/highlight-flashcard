@@ -86,7 +86,10 @@ async function init() {
         currentTab = hash;
     }
 
-    // Load data
+    // Set up initial tab state (update UI without rendering)
+    switchTab(currentTab, true);
+
+    // Load data (this will render the content)
     await loadData();
 
     console.log('Initialization complete');
@@ -338,7 +341,7 @@ async function savePreferences() {
 /**
  * Switch between tabs
  */
-function switchTab(tab) {
+function switchTab(tab, skipRender = false) {
     currentTab = tab;
     currentPage = 1;
 
@@ -355,8 +358,10 @@ function switchTab(tab) {
     tagFilterContainer.style.display = tab === 'highlights' ? 'block' : 'none';
     sourceFilterContainer.style.display = tab === 'highlights' ? 'block' : 'none';
 
-    // Render content
-    renderCurrentTab();
+    // Render content (unless skipped during initialization)
+    if (!skipRender) {
+        renderCurrentTab();
+    }
 }
 
 // ============================================
