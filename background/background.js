@@ -633,6 +633,120 @@ function truncateText(text, maxLength) {
 }
 
 /**
+ * Handle describe action from toolbar (uses first enabled prompt)
+ * @param {string} selectedText - The text to describe
+ * @param {string} sourceUrl - The URL where text was selected
+ * @param {string} sourceTitle - The title of the page
+ */
+async function handleToolbarDescribe(selectedText, sourceUrl, sourceTitle) {
+  // Get the first enabled describe prompt
+  const prompts = await Storage.getEnabledDescribePrompts();
+
+  if (prompts.length === 0) {
+    showNotification('No Prompts', 'Please configure describe prompts in settings', 'error');
+    return;
+  }
+
+  // Use the first enabled prompt
+  const firstPrompt = prompts[0];
+  await createDescription(selectedText, sourceUrl, sourceTitle, firstPrompt.id);
+}
+
+/**
+ * Generate preview for selected text using AI
+ * @param {string} selectedText - The text to preview
+ * @returns {Promise<Object>} Preview result with data and rendered HTML
+ */
+async function generatePreview(selectedText) {
+  if (!selectedText || selectedText.trim() === '') {
+    return {
+      success: false,
+      error: 'No text selected'
+    };
+  }
+
+  // Load settings
+  const settings = await Storage.getSettings();
+
+  // Check if API key is configured
+  if (!settings.apiKey) {
+    return {
+      success: false,
+      error: 'Please configure your OpenRouter API key in settings'
+    };
+  }
+
+  // Truncate if too long
+  const text = selectedText.length > 500
+    ? selectedText.substring(0, 500)
+    : selectedText;
+
+  // Get preview template from settings
+  const previewTemplate = settings.useDefaultPreviewTemplate
+    ? Storage.getDefaultPreviewTemplate()
+    : settings.previewTemplate || Storage.getDefaultPreviewTemplate();
+
+  // Determine prompt and schema to use
+  let basePrompt = settings.useDefaultPrompt
+    ? Storage.getDefaultPrompt()
+    : settings.customPrompt || Storage.getDefaultPrompt();
+
+  const schema = settings.useDefaultSchema
+    ? Storage.getDefaultSchema()
+    : settings.customSchema || Storage.getDefaultSchema();
+
+  // Build final prompt with schema instructions
+  const prompt = Storage.buildPromptWithSchema(basePrompt, schema);
+
+  try {
+    // Create API client and generate definition
+    const client = new OpenRouterClient(settings.apiKey, settings.selectedModel);
+    const result = await client.createDefinition(text, prompt);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    // Parse JSON response
+    let flashcardData = {};
+    try {
+      let cleanedResponse = result.definition.trim();
+      cleanedResponse = cleanedResponse.replace(/^```(?:json)?\s*\n?/i, '');
+      cleanedResponse = cleanedResponse.replace(/\n?```\s*$/i, '');
+      cleanedResponse = cleanedResponse.trim();
+
+      const parsedData = JSON.parse(cleanedResponse);
+
+      if (typeof parsedData === 'object' && !Array.isArray(parsedData) && parsedData !== null) {
+        flashcardData = parsedData;
+      }
+    } catch (e) {
+      console.warn('Failed to parse JSON response for preview:', e.message);
+      // Use raw definition as fallback
+      flashcardData = { definition: result.definition };
+    }
+
+    // Render preview using template
+    const previewHtml = Storage.renderTemplate(previewTemplate, {
+      word: text,
+      ...flashcardData
+    });
+
+    return {
+      success: true,
+      data: flashcardData,
+      preview: previewHtml
+    };
+  } catch (error) {
+    console.error('Error generating preview:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
  * Handle messages from other parts of the extension
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -653,6 +767,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'refreshContextMenu') {
     createContextMenu()
       .then(() => sendResponse({ success: true }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Toolbar action: Create flashcard
+  if (request.action === 'createFlashcard') {
+    createFlashcard(request.text, request.sourceUrl)
+      .then(() => sendResponse({ success: true }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Toolbar action: Save highlight
+  if (request.action === 'saveHighlight') {
+    saveToNotebook(request.text, request.sourceUrl, request.sourceTitle)
+      .then(() => sendResponse({ success: true }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Toolbar action: Describe text
+  if (request.action === 'describeText') {
+    handleToolbarDescribe(request.text, request.sourceUrl, request.sourceTitle)
+      .then(() => sendResponse({ success: true }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Toolbar action: Generate preview
+  if (request.action === 'generatePreview') {
+    generatePreview(request.text)
+      .then(result => sendResponse(result))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }

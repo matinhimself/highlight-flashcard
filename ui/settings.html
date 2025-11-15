@@ -270,6 +270,47 @@
         </div>
       </section>
 
+      <!-- Preview Template Configuration Section -->
+      <section class="settings-section">
+        <h2>Preview Template Configuration</h2>
+        <p class="help-text">Customize how word previews are displayed in the contextual toolbar using markdown with {{variable}} placeholders</p>
+
+        <div class="form-group">
+          <label>Preview Template Mode</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="previewTemplateMode" value="default" id="useDefaultPreviewTemplate" checked />
+              <span>Use Default Preview Template (Recommended)</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="previewTemplateMode" value="custom" id="useCustomPreviewTemplate" />
+              <span>Use Custom Preview Template</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="defaultPreviewTemplateSection" class="template-section">
+          <label>Default Preview Template Preview</label>
+          <div class="template-preview" id="defaultPreviewTemplatePreview"></div>
+          <p class="help-text">Use {{variable}} syntax to insert schema fields. Supports markdown formatting.</p>
+        </div>
+
+        <div id="customPreviewTemplateSection" class="template-section hidden">
+          <label for="previewTemplate">Custom Preview Template (Markdown)</label>
+          <textarea
+            id="previewTemplate"
+            rows="8"
+            placeholder="### {{word}}&#10;&#10;**Part of Speech:** {{partOfSpeech}}&#10;&#10;**Definition:** {{definition}}&#10;&#10;**Example:** *{{example}}*"
+          ></textarea>
+          <div class="template-info">
+            <p class="help-text">
+              Use {{variableName}} to insert schema values. Supports markdown: **bold**, *italic*, # headings, - lists, `code`, [links](url)
+            </p>
+            <p class="char-count">Characters: <span id="previewTemplateCharCount">0</span> / 1000</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Describe Prompts Section -->
       <section class="settings-section">
         <h2>Describe Prompts</h2>
