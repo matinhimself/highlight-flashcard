@@ -35,6 +35,13 @@ let defaultTemplateSection;
 let customTemplateSection;
 let defaultTemplatePreview;
 let templateCharCount;
+let useDefaultPreviewTemplateRadio;
+let useCustomPreviewTemplateRadio;
+let previewTemplateTextarea;
+let defaultPreviewTemplateSection;
+let customPreviewTemplateSection;
+let defaultPreviewTemplatePreview;
+let previewTemplateCharCount;
 let saveButton;
 let resetButton;
 let testConnectionBtn;
@@ -94,6 +101,13 @@ async function init() {
   customTemplateSection = document.getElementById('customTemplateSection');
   defaultTemplatePreview = document.getElementById('defaultTemplatePreview');
   templateCharCount = document.getElementById('templateCharCount');
+  useDefaultPreviewTemplateRadio = document.getElementById('useDefaultPreviewTemplate');
+  useCustomPreviewTemplateRadio = document.getElementById('useCustomPreviewTemplate');
+  previewTemplateTextarea = document.getElementById('previewTemplate');
+  defaultPreviewTemplateSection = document.getElementById('defaultPreviewTemplateSection');
+  customPreviewTemplateSection = document.getElementById('customPreviewTemplateSection');
+  defaultPreviewTemplatePreview = document.getElementById('defaultPreviewTemplatePreview');
+  previewTemplateCharCount = document.getElementById('previewTemplateCharCount');
   saveButton = document.getElementById('saveSettings');
   resetButton = document.getElementById('resetSettings');
   testConnectionBtn = document.getElementById('testConnection');
@@ -212,6 +226,21 @@ function setupEventListeners() {
     markDirty();
   });
 
+  useDefaultPreviewTemplateRadio.addEventListener('change', () => {
+    togglePreviewTemplateSections();
+    markDirty();
+  });
+
+  useCustomPreviewTemplateRadio.addEventListener('change', () => {
+    togglePreviewTemplateSections();
+    markDirty();
+  });
+
+  previewTemplateTextarea.addEventListener('input', () => {
+    updatePreviewTemplateCharCount();
+    markDirty();
+  });
+
   // Test connection
   testConnectionBtn.addEventListener('click', testConnection);
 
@@ -298,17 +327,56 @@ async function loadSettings() {
     useCustomTemplateRadio.checked = true;
   }
 
+  // Handle preview template selection
+  previewTemplateTextarea.value = settings.previewTemplate || '';
+
+  if (settings.useDefaultPreviewTemplate !== false) {
+    useDefaultPreviewTemplateRadio.checked = true;
+  } else {
+    useCustomPreviewTemplateRadio.checked = true;
+  }
+
   toggleModelSections();
   togglePromptSections();
   toggleSchemaSections();
   toggleTemplateSections();
+  togglePreviewTemplateSections();
   updateCharCount();
   updateSchemaCharCount();
   updateTemplateCharCount();
+  updatePreviewTemplateCharCount();
+
+  // Render default preview template preview
+  renderDefaultPreviews();
 
   // Reset dirty flag
   isDirty = false;
   saveButton.disabled = true;
+}
+
+/**
+ * Render default template and preview template previews
+ */
+function renderDefaultPreviews() {
+  // Render default template preview
+  const defaultTemplate = Storage.getDefaultTemplate();
+  const sampleData = {
+    word: 'serendipity',
+    partOfSpeech: 'noun',
+    definition: 'The occurrence of events by chance in a happy or beneficial way',
+    example: 'Finding that book was pure serendipity'
+  };
+  const renderedTemplate = Storage.renderTemplate(defaultTemplate, sampleData);
+  if (defaultTemplatePreview) {
+    defaultTemplatePreview.innerHTML = `<pre>${escapeHtml(renderedTemplate)}</pre>`;
+  }
+
+  // Render default preview template preview
+  const defaultPreviewTemplate = Storage.getDefaultPreviewTemplate();
+  const renderedPreviewTemplate = Storage.renderTemplate(defaultPreviewTemplate, sampleData);
+  if (defaultPreviewTemplatePreview) {
+    defaultPreviewTemplatePreview.innerHTML = `<pre>${escapeHtml(renderedPreviewTemplate)}</pre>`;
+  }
 }
 
 /**
@@ -452,6 +520,33 @@ function updateTemplateCharCount() {
 }
 
 /**
+ * Toggle between default and custom preview template sections
+ */
+function togglePreviewTemplateSections() {
+  if (useDefaultPreviewTemplateRadio.checked) {
+    defaultPreviewTemplateSection.classList.remove('hidden');
+    customPreviewTemplateSection.classList.add('hidden');
+  } else {
+    defaultPreviewTemplateSection.classList.add('hidden');
+    customPreviewTemplateSection.classList.remove('hidden');
+  }
+}
+
+/**
+ * Update character count for custom preview template
+ */
+function updatePreviewTemplateCharCount() {
+  const count = previewTemplateTextarea.value.length;
+  previewTemplateCharCount.textContent = count;
+
+  if (count > 1000) {
+    previewTemplateCharCount.style.color = 'var(--error-color)';
+  } else {
+    previewTemplateCharCount.style.color = 'var(--text-secondary)';
+  }
+}
+
+/**
  * Mark form as dirty (has unsaved changes)
  */
 function markDirty() {
@@ -555,6 +650,8 @@ async function saveSettings() {
   const customSchema = customSchemaTextarea.value.trim();
   const useDefaultTemplate = useDefaultTemplateRadio.checked;
   const customTemplate = customTemplateTextarea.value.trim();
+  const useDefaultPreviewTemplate = useDefaultPreviewTemplateRadio.checked;
+  const previewTemplate = previewTemplateTextarea.value.trim();
 
   // Validate
   if (!apiKey) {
@@ -623,6 +720,17 @@ async function saveSettings() {
     return;
   }
 
+  // Validate preview template selection
+  if (!useDefaultPreviewTemplate && previewTemplate.length > 1000) {
+    showNotification('Custom preview template must be 1000 characters or less', 'error');
+    return;
+  }
+
+  if (!useDefaultPreviewTemplate && previewTemplate === '') {
+    showNotification('Custom preview template cannot be empty when selected', 'warning');
+    return;
+  }
+
   // Determine which model to save
   const finalModel = useCustomModel ? customModelId : selectedModel;
 
@@ -637,7 +745,9 @@ async function saveSettings() {
     customSchema,
     useDefaultSchema,
     customTemplate,
-    useDefaultTemplate
+    useDefaultTemplate,
+    previewTemplate,
+    useDefaultPreviewTemplate
   };
 
   saveButton.disabled = true;
@@ -671,7 +781,9 @@ async function resetSettings() {
     customSchema: '',
     useDefaultSchema: true,
     customTemplate: '',
-    useDefaultTemplate: true
+    useDefaultTemplate: true,
+    previewTemplate: '',
+    useDefaultPreviewTemplate: true
   };
 
   const success = await Storage.saveSettings(defaultSettings);
