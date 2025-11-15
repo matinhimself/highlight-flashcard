@@ -642,12 +642,23 @@ class GoogleDriveClient {
   }
 
   /**
-   * Get user info (email, name)
+   * Get user info (email, name) using Drive API
    * @returns {Promise<object>} User info
    */
   async getUserInfo() {
-    const response = await this.makeRequest('https://www.googleapis.com/oauth2/v2/userinfo');
-    return response.json();
+    // Use Drive API's about endpoint to get user info
+    // This works with the drive.file scope we already have
+    const response = await this.makeRequest(
+      `${DRIVE_API_BASE}/about?fields=user`
+    );
+    const data = await response.json();
+
+    // Return in a format compatible with OAuth userinfo
+    return {
+      email: data.user.emailAddress,
+      name: data.user.displayName,
+      picture: data.user.photoLink
+    };
   }
 
   /**
