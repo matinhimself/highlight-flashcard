@@ -88,6 +88,7 @@ async function loadRecentItems() {
  */
 function createFlashcardItem(flashcard) {
   const date = formatDate(new Date(flashcard.createdAt));
+  const source = extractDomain(flashcard.sourceUrl);
   return `
     <div class="list-item" data-type="flashcard" data-id="${flashcard.id}">
       <div class="item-icon">
@@ -95,7 +96,7 @@ function createFlashcardItem(flashcard) {
       </div>
       <div class="item-content">
         <div class="item-title">${escapeHtml(flashcard.word)}</div>
-        <div class="item-meta">${date}</div>
+        <div class="item-meta">${source} • ${date}</div>
       </div>
       <div class="item-arrow">
         <img src="icons/chevron-down.svg" alt="" style="transform: rotate(-90deg);">
@@ -109,6 +110,7 @@ function createFlashcardItem(flashcard) {
  */
 function createHighlightItem(highlight) {
   const date = formatDate(new Date(highlight.createdAt));
+  const source = extractDomain(highlight.sourceUrl);
   const truncatedText = highlight.text.length > 60
     ? highlight.text.substring(0, 60) + '...'
     : highlight.text;
@@ -119,7 +121,7 @@ function createHighlightItem(highlight) {
       <div class="item-icon type-badge">${typeIcon}</div>
       <div class="item-content">
         <div class="item-title">${escapeHtml(truncatedText)}</div>
-        <div class="item-meta">${date}</div>
+        <div class="item-meta">${source} • ${date}</div>
       </div>
       <div class="item-arrow">
         <img src="icons/chevron-down.svg" alt="" style="transform: rotate(-90deg);">
@@ -175,6 +177,18 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+/**
+ * Extract domain from URL
+ */
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace('www.', '');
+  } catch {
+    return 'Unknown';
+  }
 }
 
 /**
