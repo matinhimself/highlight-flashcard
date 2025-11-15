@@ -55,7 +55,7 @@
                     </div>
 
                     <!-- Filter Tags (for highlights) -->
-                    <div class="filter-container" id="filter-container" style="display: none;">
+                    <div class="filter-container" id="tag-filter-container" style="display: none;">
                         <div class="custom-dropdown">
                             <button class="dropdown-toggle" id="tag-filter-toggle">
                                 <span id="selected-tag">All Tags</span>
@@ -63,6 +63,19 @@
                             </button>
                             <div class="dropdown-menu" id="tag-dropdown">
                                 <div class="dropdown-item active" data-tag="">All Tags</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Source (for highlights) -->
+                    <div class="filter-container" id="source-filter-container" style="display: none;">
+                        <div class="custom-dropdown">
+                            <button class="dropdown-toggle" id="source-filter-toggle">
+                                <span id="selected-source">All Sources</span>
+                                <img src="icons/chevron-down.svg" alt="" class="chevron-icon">
+                            </button>
+                            <div class="dropdown-menu" id="source-dropdown">
+                                <div class="dropdown-item active" data-source="">All Sources</div>
                             </div>
                         </div>
                     </div>
@@ -221,6 +234,35 @@
             <div class="modal-footer">
                 <button class="button-secondary modal-cancel">Cancel</button>
                 <button class="button-danger" id="confirm-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed View Modal -->
+    <div id="detail-modal" class="modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="detail-modal-title">Details</h2>
+                <button class="modal-close">
+                    <img src="icons/x.svg" alt="Close" class="icon">
+                </button>
+            </div>
+            <div class="modal-body" id="detail-modal-body">
+                <!-- Content will be dynamically populated -->
+            </div>
+            <div class="modal-footer">
+                <button class="button-secondary modal-cancel">Close</button>
+                <div class="detail-actions">
+                    <button class="button-secondary" id="detail-edit" style="display: none;">
+                        <img src="icons/pencil.svg" alt="Edit" class="icon" style="width: 16px; height: 16px; margin-right: 0.5rem;">
+                        Edit
+                    </button>
+                    <button class="button-danger" id="detail-delete">
+                        <img src="icons/trash-2.svg" alt="Delete" class="icon" style="width: 16px; height: 16px; margin-right: 0.5rem;">
+                        Delete
+                    </button>
+                </div>
             </div>
         </div>
     </div>
