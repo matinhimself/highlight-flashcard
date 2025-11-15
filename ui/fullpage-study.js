@@ -16,7 +16,10 @@ let sortToggle;
 let sortDropdown;
 let tagFilterToggle;
 let tagDropdown;
-let filterContainer;
+let tagFilterContainer;
+let sourceFilterToggle;
+let sourceDropdown;
+let sourceFilterContainer;
 let exportButton;
 let settingsButton;
 
@@ -35,6 +38,7 @@ let nextPageBtn;
 
 let editModal;
 let deleteModal;
+let detailModal;
 
 // ============================================
 // State
@@ -47,6 +51,7 @@ let currentTab = 'flashcards'; // 'flashcards' or 'highlights'
 let currentViewMode = 'list'; // 'list', 'cards', 'grid', 'detailed'
 let currentSort = 'newest'; // 'newest', 'oldest', 'a-z', 'z-a'
 let selectedTag = ''; // For highlights filtering
+let selectedSource = ''; // For highlights filtering by source URL
 let searchQuery = '';
 let currentPage = 1;
 const ITEMS_PER_PAGE = 20;
@@ -55,6 +60,8 @@ let currentEditingId = null;
 let currentEditingType = null;
 let currentDeletingId = null;
 let currentDeletingType = null;
+let currentDetailId = null;
+let currentDetailType = null;
 let searchDebounceTimer = null;
 let currentTemplate = null; // Cache for template settings
 
@@ -101,7 +108,10 @@ function getDOMElements() {
     sortDropdown = document.getElementById('sort-dropdown');
     tagFilterToggle = document.getElementById('tag-filter-toggle');
     tagDropdown = document.getElementById('tag-dropdown');
-    filterContainer = document.getElementById('filter-container');
+    tagFilterContainer = document.getElementById('tag-filter-container');
+    sourceFilterToggle = document.getElementById('source-filter-toggle');
+    sourceDropdown = document.getElementById('source-dropdown');
+    sourceFilterContainer = document.getElementById('source-filter-container');
     exportButton = document.getElementById('export-button');
 
     // Content
@@ -123,6 +133,7 @@ function getDOMElements() {
     // Modals
     editModal = document.getElementById('edit-modal');
     deleteModal = document.getElementById('delete-modal');
+    detailModal = document.getElementById('detail-modal');
 }
 
 /**
@@ -146,6 +157,9 @@ function setupEventListeners() {
 
     // Tag filter dropdown
     tagFilterToggle.addEventListener('click', () => toggleDropdown(tagFilterToggle.parentElement));
+
+    // Source filter dropdown
+    sourceFilterToggle.addEventListener('click', () => toggleDropdown(sourceFilterToggle.parentElement));
 
     // View mode toggle
     document.querySelectorAll('.view-button').forEach(btn => {
@@ -203,6 +217,29 @@ function setupModalListeners() {
     deleteModalConfirmBtn.addEventListener('click', confirmDelete);
 
     deleteModal.querySelector('.modal-backdrop').addEventListener('click', closeDeleteModal);
+
+    // Detail modal
+    const detailModalCloseBtn = detailModal.querySelector('.modal-close');
+    const detailModalCancelBtn = detailModal.querySelector('.modal-cancel');
+    const detailEditBtn = document.getElementById('detail-edit');
+    const detailDeleteBtn = document.getElementById('detail-delete');
+
+    detailModalCloseBtn.addEventListener('click', closeDetailModal);
+    detailModalCancelBtn.addEventListener('click', closeDetailModal);
+    detailEditBtn.addEventListener('click', () => {
+        closeDetailModal();
+        if (currentDetailId && currentDetailType) {
+            openEditModal(currentDetailId, currentDetailType);
+        }
+    });
+    detailDeleteBtn.addEventListener('click', () => {
+        closeDetailModal();
+        if (currentDetailId && currentDetailType) {
+            openDeleteModal(currentDetailId, currentDetailType);
+        }
+    });
+
+    detailModal.querySelector('.modal-backdrop').addEventListener('click', closeDetailModal);
 }
 
 /**
@@ -213,6 +250,7 @@ function handleKeyboardShortcuts(e) {
     if (e.key === 'Escape') {
         closeEditModal();
         closeDeleteModal();
+        closeDetailModal();
     }
 
     // Ctrl/Cmd + F to focus search
@@ -260,6 +298,7 @@ async function loadData() {
     // Update UI
     updateCounts();
     updateTagFilter();
+    updateSourceFilter();
     applyFiltersAndSort();
     renderCurrentTab();
 
@@ -312,8 +351,9 @@ function switchTab(tab) {
     flashcardsContent.classList.toggle('active', tab === 'flashcards');
     highlightsContent.classList.toggle('active', tab === 'highlights');
 
-    // Show/hide tag filter
-    filterContainer.style.display = tab === 'highlights' ? 'block' : 'none';
+    // Show/hide filters (only for highlights)
+    tagFilterContainer.style.display = tab === 'highlights' ? 'block' : 'none';
+    sourceFilterContainer.style.display = tab === 'highlights' ? 'block' : 'none';
 
     // Render content
     renderCurrentTab();
@@ -458,6 +498,72 @@ function updateTagFilter() {
 }
 
 /**
+ * Handle source filter selection
+ */
+function handleSourceFilter(source) {
+    selectedSource = source;
+    currentPage = 1;
+
+    // Update dropdown
+    document.querySelectorAll('#source-dropdown .dropdown-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.source === source);
+    });
+
+    // Update button text
+    const displayText = source ? (source.length > 25 ? source.substring(0, 25) + '...' : source) : 'All Sources';
+    document.getElementById('selected-source').textContent = displayText;
+
+    // Close dropdown
+    sourceFilterToggle.parentElement.classList.remove('open');
+
+    // Re-filter and render
+    applyFiltersAndSort();
+    renderCurrentTab();
+}
+
+/**
+ * Update source filter dropdown with available sources
+ */
+function updateSourceFilter() {
+    // Collect all unique source URLs (without query params)
+    const sources = new Set();
+    allHighlights.forEach(h => {
+        if (h.sourceUrl) {
+            const cleanUrl = getCleanUrl(h.sourceUrl);
+            sources.add(cleanUrl);
+        }
+    });
+
+    // Build dropdown
+    const sortedSources = Array.from(sources).sort();
+    sourceDropdown.innerHTML = '<div class="dropdown-item active" data-source="">All Sources</div>';
+
+    sortedSources.forEach(source => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        item.dataset.source = source;
+        // Truncate long URLs for display
+        const displayText = source.length > 40 ? source.substring(0, 40) + '...' : source;
+        item.textContent = displayText;
+        item.title = source; // Full URL on hover
+        item.addEventListener('click', () => handleSourceFilter(source));
+        sourceDropdown.appendChild(item);
+    });
+}
+
+/**
+ * Get clean URL without query parameters
+ */
+function getCleanUrl(url) {
+    try {
+        const urlObj = new URL(url);
+        return urlObj.origin + urlObj.pathname;
+    } catch {
+        return url;
+    }
+}
+
+/**
  * Apply all filters and sorting
  */
 function applyFiltersAndSort() {
@@ -512,6 +618,13 @@ function filterAndSortHighlights() {
     if (selectedTag) {
         filteredHighlights = filteredHighlights.filter(h =>
             h.tags && h.tags.includes(selectedTag)
+        );
+    }
+
+    // Apply source filter
+    if (selectedSource) {
+        filteredHighlights = filteredHighlights.filter(h =>
+            h.sourceUrl && getCleanUrl(h.sourceUrl) === selectedSource
         );
     }
 
@@ -671,6 +784,18 @@ function createFlashcardElement(flashcard) {
     `;
 
     // Event listeners
+    card.addEventListener('click', () => {
+        openDetailModal(flashcard.id, 'flashcard');
+    });
+
+    // Prevent source link from opening detail modal
+    const sourceLink = card.querySelector('.flashcard-source a');
+    if (sourceLink) {
+        sourceLink.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+
     card.querySelector('.edit-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         openEditModal(flashcard.id, 'flashcard');
@@ -745,14 +870,28 @@ function createHighlightElement(highlight) {
         ${badgesHtml}
     `;
 
+    // Event listeners
+    card.addEventListener('click', () => {
+        openDetailModal(highlight.id, 'highlight');
+    });
+
     // Event listeners for tags
     card.querySelectorAll('.tag').forEach(tag => {
-        tag.addEventListener('click', () => {
+        tag.addEventListener('click', (e) => {
+            e.stopPropagation();
             if (currentTab === 'highlights') {
                 handleTagFilter(tag.dataset.tag);
             }
         });
     });
+
+    // Prevent source link from opening detail modal
+    const sourceLink = card.querySelector('.flashcard-source a');
+    if (sourceLink) {
+        sourceLink.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
 
     card.querySelector('.delete-btn').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -937,6 +1076,160 @@ async function confirmDelete() {
         console.error('Error deleting item:', error);
         alert('Failed to delete item');
     }
+}
+
+/**
+ * Open detail modal
+ */
+function openDetailModal(id, type) {
+    currentDetailId = id;
+    currentDetailType = type;
+
+    const modalBody = document.getElementById('detail-modal-body');
+    const modalTitle = document.getElementById('detail-modal-title');
+    const detailEditBtn = document.getElementById('detail-edit');
+
+    if (type === 'flashcard') {
+        const flashcard = allFlashcards.find(f => f.id === id);
+        if (!flashcard) return;
+
+        modalTitle.textContent = 'Flashcard Details';
+        detailEditBtn.style.display = 'inline-flex';
+
+        // Format definition
+        const formattedDefinition = flashcard.data
+            ? formatStructuredData(flashcard.data)
+            : applyMarkdownFormatting(flashcard.definition);
+
+        // Format date
+        const formattedDate = new Date(flashcard.createdAt).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        modalBody.innerHTML = `
+            <div class="detail-word">${escapeHtml(flashcard.word)}</div>
+
+            <div class="detail-section">
+                <h3>Definition</h3>
+                <div class="detail-section-content">
+                    ${formattedDefinition}
+                </div>
+            </div>
+
+            <div class="detail-meta">
+                <div class="detail-meta-item">
+                    <div class="detail-meta-label">Source</div>
+                    <div class="detail-meta-value">
+                        <a href="${escapeHtml(flashcard.sourceUrl)}" target="_blank">
+                            ${escapeHtml(flashcard.sourceTitle || flashcard.sourceUrl)}
+                        </a>
+                    </div>
+                </div>
+                <div class="detail-meta-item">
+                    <div class="detail-meta-label">Created</div>
+                    <div class="detail-meta-value">${formattedDate}</div>
+                </div>
+            </div>
+        `;
+    } else if (type === 'highlight') {
+        const highlight = allHighlights.find(h => h.id === id);
+        if (!highlight) return;
+
+        modalTitle.textContent = 'Highlight Details';
+        detailEditBtn.style.display = 'none';
+
+        // Format description
+        const descriptionHtml = highlight.description
+            ? `<div class="detail-section">
+                <h3>Description</h3>
+                <div class="detail-section-content">
+                    ${applyMarkdownFormatting(highlight.description)}
+                </div>
+              </div>`
+            : '';
+
+        // Format tags
+        const tagsHtml = highlight.tags && highlight.tags.length > 0
+            ? `<div class="detail-section">
+                <h3>Tags</h3>
+                <div class="detail-tags">
+                    ${highlight.tags.map(tag => `<span class="detail-tag">${escapeHtml(tag)}</span>`).join('')}
+                </div>
+              </div>`
+            : '';
+
+        // Format date
+        const formattedDate = new Date(highlight.createdAt).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // Meta items
+        const metaItems = [
+            {
+                label: 'Source',
+                value: `<a href="${escapeHtml(highlight.sourceUrl)}" target="_blank">${escapeHtml(highlight.sourceTitle || highlight.sourceUrl)}</a>`
+            },
+            {
+                label: 'Created',
+                value: formattedDate
+            }
+        ];
+
+        if (highlight.promptName) {
+            metaItems.push({
+                label: 'Prompt',
+                value: escapeHtml(highlight.promptName)
+            });
+        }
+
+        if (highlight.modelId) {
+            const modelName = highlight.modelId.split('/').pop();
+            metaItems.push({
+                label: 'Model',
+                value: escapeHtml(modelName)
+            });
+        }
+
+        const metaHtml = `
+            <div class="detail-meta">
+                ${metaItems.map(item => `
+                    <div class="detail-meta-item">
+                        <div class="detail-meta-label">${item.label}</div>
+                        <div class="detail-meta-value">${item.value}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        modalBody.innerHTML = `
+            <div class="detail-text">${escapeHtml(highlight.text)}</div>
+
+            ${descriptionHtml}
+            ${tagsHtml}
+            ${metaHtml}
+        `;
+    }
+
+    detailModal.classList.add('active');
+}
+
+/**
+ * Close detail modal
+ */
+function closeDetailModal() {
+    detailModal.classList.remove('active');
+    currentDetailId = null;
+    currentDetailType = null;
 }
 
 // ============================================
