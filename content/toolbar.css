@@ -140,8 +140,8 @@
 
 /* Preview container */
 .lexis-toolbar-preview {
-  margin-top: 12px;
-  padding: 12px;
+  margin-top: 0;
+  padding: 0;
   background: rgba(15, 23, 42, 0.6);
   border-radius: 8px;
   border: 1px solid var(--dark-border);
@@ -152,6 +152,8 @@
 }
 
 .lexis-toolbar-preview.visible {
+  margin-top: 12px;
+  padding: 12px;
   max-height: 300px;
   opacity: 1;
   overflow-y: auto;

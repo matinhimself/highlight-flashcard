@@ -435,7 +435,9 @@ class LexisToolbar {
   expandToolbar() {
     if (!this.toolbar) return;
 
-    this.toolbar.classList.add('animating');
+    // Add 'expanded' class first to set flex-direction: column
+    this.toolbar.classList.add('expanded', 'animating');
+    this.isExpanded = true;
 
     // Use Web Animations API for smooth expansion
     const animation = this.toolbar.animate([
@@ -448,9 +450,7 @@ class LexisToolbar {
     });
 
     animation.onfinish = () => {
-      this.toolbar.classList.add('expanded');
       this.toolbar.classList.remove('animating');
-      this.isExpanded = true;
       this.positionToolbar(); // Reposition after expansion
     };
   }
