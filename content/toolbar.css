@@ -62,44 +62,42 @@
   width: 36px;
   height: 36px;
   border: none;
-  background: rgba(16, 185, 129, 0.2);
-  backdrop-filter: blur(10px);
+  background: rgba(16, 185, 129, 0.15);
+  backdrop-filter: blur(12px);
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   padding: 0;
   outline: none;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.25), inset 0 0 20px rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .lexis-toolbar-btn:hover {
-  background: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
-  transform: translateY(-1px);
+  background: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.5), inset 0 0 30px rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.6);
+  transform: translateY(-2px) scale(1.05);
 }
 
 .lexis-toolbar-btn:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .lexis-toolbar-btn svg {
   width: 20px;
   height: 20px;
-  fill: white;
-  transition: fill 0.15s ease;
-}
-
-/* Sparkle icon (flashcard button) should be black */
-.lexis-toolbar-btn[data-action="flashcard"] svg {
-  fill: black;
+  filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.5));
+  transition: all 0.2s ease;
 }
 
 .lexis-toolbar-btn:hover svg {
-  fill: white;
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.8));
+  transform: scale(1.1);
 }
 
 /* Tooltip */
@@ -452,9 +450,11 @@
 .lexis-toolbar-close svg {
   width: 16px;
   height: 16px;
-  fill: var(--text-secondary);
+  stroke: var(--text-secondary);
+  transition: all 0.2s ease;
 }
 
 .lexis-toolbar-close:hover svg {
-  fill: var(--text-primary);
+  stroke: var(--text-primary);
+  filter: drop-shadow(0 0 4px rgba(148, 163, 184, 0.5));
 }

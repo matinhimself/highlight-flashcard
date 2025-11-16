@@ -13,9 +13,11 @@ class LexisToolbar {
     this.previewData = null;
     this.describeMenuOpen = false;
     this.describePrompts = [];
+    this.iconCache = {};
 
     this.init();
     this.loadDescribePrompts();
+    this.loadIcons();
   }
 
   init() {
@@ -46,6 +48,32 @@ class LexisToolbar {
     } catch (error) {
       console.error('Error loading describe prompts:', error);
       this.describePrompts = [];
+    }
+  }
+
+  async loadIcons() {
+    const iconNames = ['sparkles', 'book-marked', 'pencil', 'eye', 'x'];
+
+    for (const name of iconNames) {
+      try {
+        const url = chrome.runtime.getURL(`ui/icons/${name}.svg`);
+        const response = await fetch(url);
+        let svgContent = await response.text();
+
+        // Replace currentColor with themed green (except for 'x' icon)
+        if (name !== 'x') {
+          svgContent = svgContent.replace(/stroke="currentColor"/g, 'stroke="#10b981"');
+        } else {
+          svgContent = svgContent.replace(/stroke="currentColor"/g, 'stroke="#94a3b8"');
+        }
+
+        // Extract just the SVG content (remove xml declaration if present)
+        const svgMatch = svgContent.match(/<svg[\s\S]*<\/svg>/);
+        this.iconCache[name] = svgMatch ? svgMatch[0] : svgContent;
+      } catch (error) {
+        console.error(`Error loading icon ${name}:`, error);
+        this.iconCache[name] = '';
+      }
     }
   }
 
@@ -594,15 +622,7 @@ class LexisToolbar {
   }
 
   getIcon(name) {
-    const icons = {
-      'sparkles': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18m9-9H3m15.364-6.364L5.636 18.364m12.728 0L5.636 5.636"/></svg>',
-      'book-marked': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 2v10l2-2 2 2V2"/></svg>',
-      'pencil': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>',
-      'eye': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
-      'x': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>'
-    };
-
-    return icons[name] || '';
+    return this.iconCache[name] || '';
   }
 
   escapeHtml(text) {
