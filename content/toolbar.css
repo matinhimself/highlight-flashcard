@@ -330,92 +330,166 @@
   margin: 0 4px;
 }
 
-/* Describe menu dropdown */
-.lexis-describe-menu {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
-  background: linear-gradient(135deg, var(--dark-surface) 0%, var(--dark-bg) 100%);
-  border: 1px solid var(--dark-border);
+/* Describe container (similar to preview) */
+.lexis-toolbar-describe {
+  margin-top: 0;
+  padding: 0;
+  background: rgba(15, 23, 42, 0.6);
   border-radius: 8px;
-  padding: 4px;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.3),
-    0 2px 4px -1px rgba(0, 0, 0, 0.2),
-    var(--glow-green);
-  backdrop-filter: blur(12px);
-  min-width: 180px;
+  border: 1px solid var(--dark-border);
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transform: translateY(-10px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-  z-index: 10;
 }
 
-.lexis-describe-menu.visible {
-  max-height: 300px;
+.lexis-toolbar-describe.visible {
+  margin-top: 12px;
+  padding: 12px;
+  max-height: 400px;
   opacity: 1;
-  transform: translateY(0);
-  pointer-events: all;
   overflow-y: auto;
 }
 
-.lexis-describe-menu::-webkit-scrollbar {
+.lexis-toolbar-describe::-webkit-scrollbar {
   width: 6px;
 }
 
-.lexis-describe-menu::-webkit-scrollbar-track {
+.lexis-toolbar-describe::-webkit-scrollbar-track {
   background: var(--dark-bg);
   border-radius: 3px;
 }
 
-.lexis-describe-menu::-webkit-scrollbar-thumb {
+.lexis-toolbar-describe::-webkit-scrollbar-thumb {
   background: var(--primary-green);
   border-radius: 3px;
 }
 
-.lexis-describe-menu::-webkit-scrollbar-thumb:hover {
+.lexis-toolbar-describe::-webkit-scrollbar-thumb:hover {
   background: var(--primary-green-hover);
 }
 
-.lexis-describe-menu-item {
+/* Describe header */
+.lexis-describe-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--dark-border);
+}
+
+.lexis-describe-header h3 {
+  margin: 0;
+  color: var(--primary-green-light);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Describe options container */
+.lexis-describe-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Individual describe option button */
+.lexis-describe-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--dark-border);
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
-  color: var(--text-primary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 13px;
-  background: transparent;
-  border: none;
-  width: 100%;
-  text-align: left;
-}
-
-.lexis-describe-menu-item:hover {
-  background: rgba(16, 185, 129, 0.2);
-}
-
-.lexis-describe-menu-item:active {
-  background: rgba(16, 185, 129, 0.3);
-}
-
-.lexis-describe-menu-empty {
-  padding: 12px;
-  text-align: center;
-  color: var(--text-muted);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 13px;
-}
-
-/* Position describe menu relative to describe button */
-.lexis-toolbar-btn[data-action="describe"] {
+  outline: none;
   position: relative;
+  overflow: hidden;
+}
+
+.lexis-describe-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.lexis-describe-option:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  transform: translateY(-1px);
+}
+
+.lexis-describe-option:hover::before {
+  opacity: 1;
+}
+
+.lexis-describe-option:active {
+  transform: translateY(0);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.lexis-describe-option-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(16, 185, 129, 0.2);
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.lexis-describe-option:hover .lexis-describe-option-icon {
+  background: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.lexis-describe-option-icon svg {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.5));
+}
+
+.lexis-describe-option-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lexis-describe-option-name {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Empty state */
+.lexis-describe-empty {
+  text-align: center;
+  padding: 20px 12px;
+}
+
+.lexis-describe-empty p {
+  margin: 0 0 8px 0;
+  color: var(--text-secondary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.lexis-describe-empty-hint {
+  font-size: 12px !important;
+  color: var(--text-muted) !important;
 }
 
 /* Animation for expansion */
