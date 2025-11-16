@@ -727,10 +727,13 @@ async function generatePreview(selectedText) {
     }
 
     // Render preview using template
-    const previewHtml = Storage.renderTemplate(previewTemplate, {
+    const rendered = Storage.renderTemplate(previewTemplate, {
       word: text,
       ...flashcardData
     });
+
+    // Apply markdown formatting to rendered template
+    const previewHtml = applyMarkdownFormatting(rendered);
 
     return {
       success: true,
@@ -744,6 +747,68 @@ async function generatePreview(selectedText) {
       error: error.message
     };
   }
+}
+
+/**
+ * Apply markdown formatting to text
+ * @param {string} text - Text with markdown syntax
+ * @returns {string} HTML formatted text
+ */
+function applyMarkdownFormatting(text) {
+  if (!text) return '';
+
+  // Escape HTML first
+  let formatted = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  // Headings (must be on their own line)
+  formatted = formatted.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  formatted = formatted.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  formatted = formatted.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Horizontal rules
+  formatted = formatted.replace(/^---$/gm, '<hr>');
+  formatted = formatted.replace(/^\*\*\*$/gm, '<hr>');
+
+  // Code blocks ```code```
+  formatted = formatted.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+
+  // Inline code `code`
+  formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Bold text **text** (use non-greedy match)
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic text *text* (use non-greedy match, avoid matching within words)
+  formatted = formatted.replace(/(?<!\w)\*(.+?)\*(?!\w)/g, '<em>$1</em>');
+
+  // Unordered lists - items (lines starting with -)
+  formatted = formatted.replace(/^- (.+)$/gm, '<li>$1</li>');
+  // Wrap consecutive <li> items in <ul>
+  formatted = formatted.replace(/(<li>.*?<\/li>(?:\n|$))+/g, function(match) {
+    return '<ul>' + match + '</ul>';
+  });
+
+  // Ordered lists - items (lines starting with number.)
+  formatted = formatted.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+  // Links [text](url)
+  formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  // Line breaks (convert double newlines to paragraphs, single to <br>)
+  formatted = formatted.replace(/\n\n+/g, '</p><p>');
+  formatted = formatted.replace(/\n/g, '<br>');
+
+  // Wrap in paragraph if doesn't start with block element
+  if (!formatted.match(/^<(?:h[1-6]|ul|ol|pre|hr|div|p)/)) {
+    formatted = '<p>' + formatted + '</p>';
+  }
+
+  return formatted;
 }
 
 /**
@@ -790,6 +855,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Toolbar action: Describe text
   if (request.action === 'describeText') {
     handleToolbarDescribe(request.text, request.sourceUrl, request.sourceTitle)
+      .then(() => sendResponse({ success: true }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Toolbar action: Describe with specific prompt
+  if (request.action === 'describeWithPrompt') {
+    createDescription(request.text, request.sourceUrl, request.sourceTitle, request.promptId)
       .then(() => sendResponse({ success: true }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;

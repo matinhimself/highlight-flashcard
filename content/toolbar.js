@@ -11,8 +11,11 @@ class LexisToolbar {
     this.selectionRange = null;
     this.isExpanded = false;
     this.previewData = null;
+    this.describeMenuOpen = false;
+    this.describePrompts = [];
 
     this.init();
+    this.loadDescribePrompts();
   }
 
   init() {
@@ -33,6 +36,17 @@ class LexisToolbar {
         this.hideToolbar();
       }
     }, true);
+  }
+
+  async loadDescribePrompts() {
+    try {
+      const result = await chrome.storage.local.get('describePrompts');
+      const prompts = result.describePrompts || [];
+      this.describePrompts = prompts.filter(p => p.enabled);
+    } catch (error) {
+      console.error('Error loading describe prompts:', error);
+      this.describePrompts = [];
+    }
   }
 
   handleSelectionChange() {
@@ -92,6 +106,9 @@ class LexisToolbar {
         </button>
         <button class="lexis-toolbar-btn" data-action="describe" data-tooltip="Describe">
           ${this.getIcon('pencil')}
+          <div class="lexis-describe-menu">
+            ${this.renderDescribeMenu()}
+          </div>
         </button>
         <div class="lexis-toolbar-divider"></div>
         <button class="lexis-toolbar-btn" data-action="preview" data-tooltip="AI Preview">
@@ -104,9 +121,26 @@ class LexisToolbar {
     `;
 
     // Attach event listeners
-    const buttons = toolbar.querySelectorAll('.lexis-toolbar-btn');
+    const buttons = toolbar.querySelectorAll('.lexis-toolbar-btn:not([data-action="describe"])');
     buttons.forEach(btn => {
       btn.addEventListener('click', this.handleAction.bind(this));
+    });
+
+    // Describe button has special handling for menu toggle
+    const describeBtn = toolbar.querySelector('[data-action="describe"]');
+    describeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleDescribeMenu();
+    });
+
+    // Attach listeners to describe menu items
+    const menuItems = toolbar.querySelectorAll('.lexis-describe-menu-item');
+    menuItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const promptId = item.dataset.promptId;
+        this.handleDescribePrompt(promptId);
+      });
     });
 
     const closeBtn = toolbar.querySelector('.lexis-toolbar-close');
@@ -116,6 +150,68 @@ class LexisToolbar {
     document.body.appendChild(toolbar);
 
     return toolbar;
+  }
+
+  renderDescribeMenu() {
+    if (this.describePrompts.length === 0) {
+      return '<div class="lexis-describe-menu-empty">No describe prompts available</div>';
+    }
+
+    return this.describePrompts.map(prompt => `
+      <button class="lexis-describe-menu-item" data-prompt-id="${prompt.id}">
+        ${this.escapeHtml(prompt.name)}
+      </button>
+    `).join('');
+  }
+
+  toggleDescribeMenu() {
+    const menu = this.toolbar.querySelector('.lexis-describe-menu');
+    if (!menu) return;
+
+    this.describeMenuOpen = !this.describeMenuOpen;
+
+    if (this.describeMenuOpen) {
+      menu.classList.add('visible');
+    } else {
+      menu.classList.remove('visible');
+    }
+  }
+
+  closeDescribeMenu() {
+    const menu = this.toolbar?.querySelector('.lexis-describe-menu');
+    if (menu) {
+      menu.classList.remove('visible');
+      this.describeMenuOpen = false;
+    }
+  }
+
+  async handleDescribePrompt(promptId) {
+    this.closeDescribeMenu();
+
+    const describeBtn = this.toolbar.querySelector('[data-action="describe"]');
+    describeBtn.classList.add('loading');
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'describeWithPrompt',
+        text: this.selectedText,
+        sourceUrl: window.location.href,
+        sourceTitle: document.title,
+        promptId: promptId
+      });
+
+      if (response.success) {
+        this.showNotification('Description saved!', 'success');
+        this.hideToolbar();
+      } else {
+        throw new Error(response.error || 'Failed to describe text');
+      }
+    } catch (error) {
+      console.error('Error describing text:', error);
+      this.showNotification('Failed to describe text', 'error');
+    } finally {
+      describeBtn.classList.remove('loading');
+    }
   }
 
   showToolbar() {
@@ -163,6 +259,7 @@ class LexisToolbar {
   hideToolbar() {
     if (!this.toolbar) return;
 
+    this.closeDescribeMenu();
     this.toolbar.classList.remove('visible', 'expanded');
     this.isExpanded = false;
 
@@ -364,11 +461,64 @@ class LexisToolbar {
     // Fade out loading state
     await this.fadeOut(contentEl.firstElementChild);
 
-    // Set preview content
-    contentEl.innerHTML = previewHtml;
+    // Set preview content with action buttons
+    contentEl.innerHTML = `
+      <div class="lexis-preview-flashcard">
+        ${previewHtml}
+      </div>
+      <div class="lexis-preview-actions">
+        <button class="lexis-preview-btn lexis-preview-btn-primary" data-action="save-word">
+          Save as Flashcard
+        </button>
+        <button class="lexis-preview-btn lexis-preview-btn-secondary" data-action="close-preview">
+          Close
+        </button>
+      </div>
+    `;
+
+    // Attach event listeners to action buttons
+    const saveBtn = contentEl.querySelector('[data-action="save-word"]');
+    const closeBtn = contentEl.querySelector('[data-action="close-preview"]');
+
+    saveBtn.addEventListener('click', () => this.savePreviewAsFlashcard());
+    closeBtn.addEventListener('click', () => this.collapsePreview());
 
     // Fade in preview content
     await this.fadeIn(contentEl.firstElementChild);
+  }
+
+  async savePreviewAsFlashcard() {
+    const saveBtn = this.toolbar.querySelector('[data-action="save-word"]');
+
+    // Disable button and show loading state
+    saveBtn.disabled = true;
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+      // Send message to background script to create flashcard
+      const response = await chrome.runtime.sendMessage({
+        action: 'createFlashcard',
+        text: this.selectedText,
+        sourceUrl: window.location.href
+      });
+
+      if (response.success) {
+        this.showNotification('Flashcard saved successfully!', 'success');
+        // Close the preview after saving
+        setTimeout(() => {
+          this.hideToolbar();
+        }, 500);
+      } else {
+        throw new Error(response.error || 'Failed to save flashcard');
+      }
+    } catch (error) {
+      console.error('Error saving flashcard:', error);
+      this.showNotification('Failed to save flashcard', 'error');
+      // Re-enable button
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
+    }
   }
 
   fadeOut(element) {
@@ -453,6 +603,12 @@ class LexisToolbar {
     };
 
     return icons[name] || '';
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 
