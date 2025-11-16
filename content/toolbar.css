@@ -62,7 +62,8 @@
   width: 36px;
   height: 36px;
   border: none;
-  background: var(--dark-card);
+  background: rgba(16, 185, 129, 0.2);
+  backdrop-filter: blur(10px);
   border-radius: 8px;
   cursor: pointer;
   display: flex;
@@ -72,11 +73,12 @@
   position: relative;
   padding: 0;
   outline: none;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
 }
 
 .lexis-toolbar-btn:hover {
-  background: var(--primary-green);
-  box-shadow: var(--glow-green);
+  background: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
   transform: translateY(-1px);
 }
 
@@ -87,8 +89,13 @@
 .lexis-toolbar-btn svg {
   width: 20px;
   height: 20px;
-  fill: var(--text-secondary);
+  fill: white;
   transition: fill 0.15s ease;
+}
+
+/* Sparkle icon (flashcard button) should be black */
+.lexis-toolbar-btn[data-action="flashcard"] svg {
+  fill: black;
 }
 
 .lexis-toolbar-btn:hover svg {
@@ -215,6 +222,86 @@
   color: var(--accent-green);
 }
 
+.lexis-preview-content ul,
+.lexis-preview-content ol {
+  margin: 0 0 8px 0;
+  padding-left: 20px;
+}
+
+.lexis-preview-content li {
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.lexis-preview-content a {
+  color: var(--primary-green);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.lexis-preview-content a:hover {
+  color: var(--primary-green-light);
+  text-decoration: underline;
+}
+
+.lexis-preview-content hr {
+  border: none;
+  border-top: 1px solid var(--dark-border);
+  margin: 12px 0;
+}
+
+/* Preview action buttons */
+.lexis-preview-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--dark-border);
+}
+
+.lexis-preview-btn {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.lexis-preview-btn-primary {
+  background: var(--primary-green);
+  color: white;
+}
+
+.lexis-preview-btn-primary:hover {
+  background: var(--primary-green-hover);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.lexis-preview-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--dark-border);
+}
+
+.lexis-preview-btn-secondary:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--text-primary);
+  border-color: var(--primary-green);
+}
+
+.lexis-preview-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Loading spinner */
 .lexis-toolbar-loading {
   display: flex;
@@ -241,6 +328,94 @@
   height: 24px;
   background: var(--dark-border);
   margin: 0 4px;
+}
+
+/* Describe menu dropdown */
+.lexis-describe-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  background: linear-gradient(135deg, var(--dark-surface) 0%, var(--dark-bg) 100%);
+  border: 1px solid var(--dark-border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 2px 4px -1px rgba(0, 0, 0, 0.2),
+    var(--glow-green);
+  backdrop-filter: blur(12px);
+  min-width: 180px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.lexis-describe-menu.visible {
+  max-height: 300px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+  overflow-y: auto;
+}
+
+.lexis-describe-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.lexis-describe-menu::-webkit-scrollbar-track {
+  background: var(--dark-bg);
+  border-radius: 3px;
+}
+
+.lexis-describe-menu::-webkit-scrollbar-thumb {
+  background: var(--primary-green);
+  border-radius: 3px;
+}
+
+.lexis-describe-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-green-hover);
+}
+
+.lexis-describe-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.lexis-describe-menu-item:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.lexis-describe-menu-item:active {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.lexis-describe-menu-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+}
+
+/* Position describe menu relative to describe button */
+.lexis-toolbar-btn[data-action="describe"] {
+  position: relative;
 }
 
 /* Animation for expansion */
