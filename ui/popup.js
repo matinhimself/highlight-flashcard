@@ -255,6 +255,17 @@ function setupMessageListener() {
       case 'FLASHCARD_ERROR':
         hideLoadingModal();
         break;
+      case 'DESCRIBE_PROGRESS':
+        updateLoadingProgress(message.step, message.status, message.text);
+        break;
+      case 'DESCRIBE_CREATED':
+        showSuccessModal();
+        loadCounts(); // Refresh counts
+        loadRecentItems(); // Refresh items list
+        break;
+      case 'DESCRIBE_ERROR':
+        hideLoadingModal();
+        break;
     }
   });
 }

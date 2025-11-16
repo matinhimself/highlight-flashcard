@@ -20,10 +20,32 @@ const DEBOUNCE_DELAY = 2000; // 2 seconds
 /**
  * Initialize extension on install
  */
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log('Highlight Flashcard Extension installed');
+
+  // Initialize default describe prompts if not already set
+  await initializeDefaults();
+
   createContextMenu();
 });
+
+/**
+ * Initialize default settings and prompts on first install
+ */
+async function initializeDefaults() {
+  try {
+    const result = await chrome.storage.local.get('describePrompts');
+
+    // If no describe prompts exist, initialize with defaults
+    if (!result.describePrompts || result.describePrompts.length === 0) {
+      const defaultPrompts = await Storage.getDescribePrompts();
+      await chrome.storage.local.set({ describePrompts: defaultPrompts });
+      console.log('Initialized default describe prompts');
+    }
+  } catch (error) {
+    console.error('Error initializing defaults:', error);
+  }
+}
 
 /**
  * Create context menu items
@@ -403,10 +425,44 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
     'info'
   );
 
+  // Show loading badge
   chrome.action.setBadgeText({ text: '...' });
   chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
 
+  // Auto-open popup to show progress
   try {
+    await chrome.action.openPopup();
+  } catch (e) {
+    console.log('Could not open popup automatically:', e);
+  }
+
+  // Send progress: Step 1 - Preparing
+  sendMessageToPopup({
+    type: 'DESCRIBE_PROGRESS',
+    step: 1,
+    status: 'active',
+    text: `Preparing description for "${truncateText(text, 30)}"`
+  });
+
+  // Small delay to show step 1
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // Mark step 1 as completed
+  sendMessageToPopup({
+    type: 'DESCRIBE_PROGRESS',
+    step: 1,
+    status: 'completed'
+  });
+
+  try {
+    // Send progress: Step 2 - AI Processing
+    sendMessageToPopup({
+      type: 'DESCRIBE_PROGRESS',
+      step: 2,
+      status: 'active',
+      text: 'Generating description with AI...'
+    });
+
     // Build the prompt (with schema if enabled)
     let finalPrompt = describePrompt.prompt;
 
@@ -432,6 +488,14 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
     if (!result.success) {
       throw new Error(result.error);
     }
+
+    // Mark step 2 as completed
+    sendMessageToPopup({
+      type: 'DESCRIBE_PROGRESS',
+      step: 2,
+      status: 'completed',
+      text: 'AI processing complete!'
+    });
 
     // Parse response if using schema
     let descriptionData = {};
@@ -476,6 +540,14 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
       }
     }
 
+    // Send progress: Step 3 - Saving
+    sendMessageToPopup({
+      type: 'DESCRIBE_PROGRESS',
+      step: 3,
+      status: 'active',
+      text: 'Saving description...'
+    });
+
     // Save to highlights with description and tags
     const highlight = {
       text: text.trim(),
@@ -505,6 +577,14 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
       throw new Error('Failed to save highlight');
     }
 
+    // Mark step 3 as completed
+    sendMessageToPopup({
+      type: 'DESCRIBE_PROGRESS',
+      step: 3,
+      status: 'completed',
+      text: 'Description saved successfully!'
+    });
+
     // Show success notification
     showNotification(
       'Description Created',
@@ -512,18 +592,33 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
       'success'
     );
 
+    // Clear badge
     chrome.action.setBadgeText({ text: '' });
 
     console.log('Description created:', highlight);
+
+    // Send description to popup for preview
+    sendMessageToPopup({
+      type: 'DESCRIBE_CREATED',
+      description: highlight
+    });
   } catch (error) {
     console.error('Error creating description:', error);
 
+    // Send error to popup
+    sendMessageToPopup({
+      type: 'DESCRIBE_ERROR',
+      error: error.message
+    });
+
+    // Show error notification
     showNotification(
       'Error',
       `Failed to create description: ${error.message}`,
       'error'
     );
 
+    // Clear badge
     chrome.action.setBadgeText({ text: '' });
   }
 }
