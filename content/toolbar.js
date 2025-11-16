@@ -134,14 +134,14 @@ class LexisToolbar {
         </button>
         <button class="lexis-toolbar-btn" data-action="describe" data-tooltip="Describe">
           ${this.getIcon('pencil')}
-          <div class="lexis-describe-menu">
-            ${this.renderDescribeMenu()}
-          </div>
         </button>
         <div class="lexis-toolbar-divider"></div>
         <button class="lexis-toolbar-btn" data-action="preview" data-tooltip="AI Preview">
           ${this.getIcon('eye')}
         </button>
+      </div>
+      <div class="lexis-toolbar-describe">
+        <div class="lexis-describe-content"></div>
       </div>
       <div class="lexis-toolbar-preview">
         <div class="lexis-preview-content"></div>
@@ -149,26 +149,9 @@ class LexisToolbar {
     `;
 
     // Attach event listeners
-    const buttons = toolbar.querySelectorAll('.lexis-toolbar-btn:not([data-action="describe"])');
+    const buttons = toolbar.querySelectorAll('.lexis-toolbar-btn');
     buttons.forEach(btn => {
       btn.addEventListener('click', this.handleAction.bind(this));
-    });
-
-    // Describe button has special handling for menu toggle
-    const describeBtn = toolbar.querySelector('[data-action="describe"]');
-    describeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.toggleDescribeMenu();
-    });
-
-    // Attach listeners to describe menu items
-    const menuItems = toolbar.querySelectorAll('.lexis-describe-menu-item');
-    menuItems.forEach(item => {
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const promptId = item.dataset.promptId;
-        this.handleDescribePrompt(promptId);
-      });
     });
 
     const closeBtn = toolbar.querySelector('.lexis-toolbar-close');
@@ -180,44 +163,159 @@ class LexisToolbar {
     return toolbar;
   }
 
-  renderDescribeMenu() {
+  async showDescribeOptions(button) {
+    // If already expanded with describe, collapse
+    if (this.isExpanded && this.describeMenuOpen) {
+      this.collapseDescribe();
+      return;
+    }
+
+    // Close preview if it's open
+    if (this.isExpanded && !this.describeMenuOpen) {
+      this.collapsePreview();
+    }
+
+    button.classList.add('loading');
+
+    try {
+      // Reload describe prompts to ensure we have the latest
+      await this.loadDescribePrompts();
+
+      // Show loading state
+      this.expandToolbarForDescribe();
+      this.showDescribeLoadingState();
+
+      // Small delay for smooth animation
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Render describe options
+      await this.renderDescribeOptions();
+      this.describeMenuOpen = true;
+    } catch (error) {
+      console.error('Error showing describe options:', error);
+      this.showNotification('Failed to load describe options', 'error');
+      this.collapseDescribe();
+    } finally {
+      button.classList.remove('loading');
+    }
+  }
+
+  expandToolbarForDescribe() {
+    if (!this.toolbar) return;
+
+    this.toolbar.classList.add('expanded', 'animating');
+    this.isExpanded = true;
+
+    const animation = this.toolbar.animate([
+      { maxWidth: '200px' },
+      { maxWidth: '400px' }
+    ], {
+      duration: 400,
+      easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+      fill: 'forwards'
+    });
+
+    animation.onfinish = () => {
+      this.toolbar.classList.remove('animating');
+      this.positionToolbar();
+    };
+  }
+
+  showDescribeLoadingState() {
+    const describeEl = this.toolbar.querySelector('.lexis-toolbar-describe');
+    const contentEl = describeEl.querySelector('.lexis-describe-content');
+
+    contentEl.innerHTML = `
+      <div class="lexis-toolbar-loading">
+        <div class="lexis-toolbar-spinner"></div>
+        <span>Loading describe models...</span>
+      </div>
+    `;
+
+    describeEl.classList.add('visible');
+  }
+
+  async renderDescribeOptions() {
+    const describeEl = this.toolbar.querySelector('.lexis-toolbar-describe');
+    const contentEl = describeEl.querySelector('.lexis-describe-content');
+
+    // Fade out loading state
+    await this.fadeOut(contentEl.firstElementChild);
+
+    // Build describe options HTML
+    let optionsHTML = '';
+
     if (this.describePrompts.length === 0) {
-      return '<div class="lexis-describe-menu-empty">No describe prompts available</div>';
-    }
-
-    return this.describePrompts.map(prompt => `
-      <button class="lexis-describe-menu-item" data-prompt-id="${prompt.id}">
-        ${this.escapeHtml(prompt.name)}
-      </button>
-    `).join('');
-  }
-
-  toggleDescribeMenu() {
-    const menu = this.toolbar.querySelector('.lexis-describe-menu');
-    if (!menu) return;
-
-    this.describeMenuOpen = !this.describeMenuOpen;
-
-    if (this.describeMenuOpen) {
-      menu.classList.add('visible');
+      optionsHTML = `
+        <div class="lexis-describe-header">
+          <h3>Describe Models</h3>
+        </div>
+        <div class="lexis-describe-empty">
+          <p>No describe models available</p>
+          <p class="lexis-describe-empty-hint">Add describe models in the extension settings</p>
+        </div>
+      `;
     } else {
-      menu.classList.remove('visible');
+      const promptButtons = this.describePrompts.map(prompt => `
+        <button class="lexis-describe-option" data-prompt-id="${prompt.id}">
+          <div class="lexis-describe-option-icon">${this.getIcon('pencil')}</div>
+          <div class="lexis-describe-option-text">
+            <div class="lexis-describe-option-name">${this.escapeHtml(prompt.name)}</div>
+          </div>
+        </button>
+      `).join('');
+
+      optionsHTML = `
+        <div class="lexis-describe-header">
+          <h3>Choose Describe Model</h3>
+        </div>
+        <div class="lexis-describe-options">
+          ${promptButtons}
+        </div>
+      `;
     }
+
+    contentEl.innerHTML = optionsHTML;
+
+    // Attach event listeners to describe option buttons
+    const optionButtons = contentEl.querySelectorAll('.lexis-describe-option');
+    optionButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const promptId = btn.dataset.promptId;
+        this.handleDescribePrompt(promptId);
+      });
+    });
+
+    // Fade in describe options
+    await this.fadeIn(contentEl.firstElementChild);
   }
 
-  closeDescribeMenu() {
-    const menu = this.toolbar?.querySelector('.lexis-describe-menu');
-    if (menu) {
-      menu.classList.remove('visible');
-      this.describeMenuOpen = false;
-    }
+  collapseDescribe() {
+    if (!this.toolbar) return;
+
+    const describeEl = this.toolbar.querySelector('.lexis-toolbar-describe');
+    describeEl.classList.remove('visible');
+    this.describeMenuOpen = false;
+
+    setTimeout(() => {
+      this.toolbar.classList.remove('expanded');
+      this.isExpanded = false;
+      this.positionToolbar();
+    }, 300);
   }
 
   async handleDescribePrompt(promptId) {
-    this.closeDescribeMenu();
+    const describeEl = this.toolbar.querySelector('.lexis-toolbar-describe');
+    const contentEl = describeEl.querySelector('.lexis-describe-content');
 
-    const describeBtn = this.toolbar.querySelector('[data-action="describe"]');
-    describeBtn.classList.add('loading');
+    // Show loading state
+    contentEl.innerHTML = `
+      <div class="lexis-toolbar-loading">
+        <div class="lexis-toolbar-spinner"></div>
+        <span>Describing text...</span>
+      </div>
+    `;
 
     try {
       const response = await chrome.runtime.sendMessage({
@@ -237,8 +335,8 @@ class LexisToolbar {
     } catch (error) {
       console.error('Error describing text:', error);
       this.showNotification('Failed to describe text', 'error');
-    } finally {
-      describeBtn.classList.remove('loading');
+      // Go back to describe options on error
+      await this.renderDescribeOptions();
     }
   }
 
@@ -287,9 +385,9 @@ class LexisToolbar {
   hideToolbar() {
     if (!this.toolbar) return;
 
-    this.closeDescribeMenu();
     this.toolbar.classList.remove('visible', 'expanded');
     this.isExpanded = false;
+    this.describeMenuOpen = false;
 
     setTimeout(() => {
       if (this.toolbar && !this.toolbar.classList.contains('visible')) {
@@ -312,7 +410,7 @@ class LexisToolbar {
         await this.saveHighlight(button);
         break;
       case 'describe':
-        await this.describeText(button);
+        await this.showDescribeOptions(button);
         break;
       case 'preview':
         await this.showPreview(button);
@@ -371,31 +469,6 @@ class LexisToolbar {
     }
   }
 
-  async describeText(button) {
-    button.classList.add('loading');
-
-    try {
-      // Send message to background script to describe text
-      const response = await chrome.runtime.sendMessage({
-        action: 'describeText',
-        text: this.selectedText,
-        sourceUrl: window.location.href,
-        sourceTitle: document.title
-      });
-
-      if (response.success) {
-        this.showNotification('Description saved!', 'success');
-        this.hideToolbar();
-      } else {
-        throw new Error(response.error || 'Failed to describe text');
-      }
-    } catch (error) {
-      console.error('Error describing text:', error);
-      this.showNotification('Failed to describe text', 'error');
-    } finally {
-      button.classList.remove('loading');
-    }
-  }
 
   async showPreview(button) {
     // If already expanded, collapse
