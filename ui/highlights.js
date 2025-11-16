@@ -784,7 +784,7 @@ async function confirmDelete() {
   cancelButton.disabled = true;
 
   try {
-    const success = await Storage.deleteHighlight(currentDeletingId);
+    const success = await Storage.deleteHighlightWithSync(currentDeletingId);
 
     if (success) {
       closeDeleteModal();
