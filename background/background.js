@@ -381,8 +381,11 @@ async function createFlashcard(selectedText, sourceUrl) {
  * @param {string} sourceUrl - The URL where text was selected
  * @param {string} sourceTitle - The page title where text was selected
  * @param {string} promptId - The ID of the describe prompt to use
+ * @param {string} xpath - XPath to the highlight location
+ * @param {Object} position - Position coordinates {x, y}
+ * @returns {Promise<string>} The ID of the saved highlight
  */
-async function createDescription(selectedText, sourceUrl, sourceTitle, promptId) {
+async function createDescription(selectedText, sourceUrl, sourceTitle, promptId, xpath = '', position = null) {
   if (!selectedText || selectedText.trim() === '') {
     showNotification('Error', 'No text selected', 'error');
     return;
@@ -561,6 +564,14 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
       createdAt: Date.now()
     };
 
+    // Add xpath and position if provided
+    if (xpath) {
+      highlight.xpath = xpath;
+    }
+    if (position) {
+      highlight.position = position;
+    }
+
     // Add structured data if available
     if (Object.keys(descriptionData).length > 0) {
       highlight.data = descriptionData;
@@ -576,6 +587,11 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
     if (!saved) {
       throw new Error('Failed to save highlight');
     }
+
+    // Get the highlight ID (it's generated in addHighlight)
+    const highlights = await Storage.getHighlights();
+    const savedHighlight = highlights[0]; // Most recent (added to beginning)
+    const highlightId = savedHighlight.id;
 
     // Mark step 3 as completed
     sendMessageToPopup({
@@ -602,6 +618,9 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
       type: 'DESCRIBE_CREATED',
       description: highlight
     });
+
+    // Return the highlight ID
+    return highlightId;
   } catch (error) {
     console.error('Error creating description:', error);
 
@@ -620,6 +639,8 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId)
 
     // Clear badge
     chrome.action.setBadgeText({ text: '' });
+
+    throw error;
   }
 }
 
@@ -957,8 +978,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // Toolbar action: Describe with specific prompt
   if (request.action === 'describeWithPrompt') {
-    createDescription(request.text, request.sourceUrl, request.sourceTitle, request.promptId)
-      .then(() => sendResponse({ success: true }))
+    createDescription(request.text, request.sourceUrl, request.sourceTitle, request.promptId, request.xpath, request.position)
+      .then((highlightId) => sendResponse({ success: true, highlightId: highlightId }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Get a specific highlight by ID
+  if (request.action === 'getHighlight') {
+    Storage.getHighlights()
+      .then(highlights => {
+        const highlight = highlights.find(h => h.id === request.highlightId);
+        if (highlight) {
+          sendResponse({ success: true, highlight: highlight });
+        } else {
+          sendResponse({ success: false, error: 'Highlight not found' });
+        }
+      })
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
