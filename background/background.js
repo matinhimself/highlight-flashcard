@@ -999,6 +999,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  // Get highlights for a specific URL
+  if (request.action === 'getHighlightsForUrl') {
+    Storage.getHighlights()
+      .then(highlights => {
+        // Filter highlights for this URL that have xpath or position data
+        const urlHighlights = highlights.filter(h =>
+          h.sourceUrl === request.url &&
+          h.type === 'described' &&
+          (h.xpath || h.position)
+        );
+        sendResponse({ success: true, highlights: urlHighlights });
+      })
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   // Toolbar action: Generate preview
   if (request.action === 'generatePreview') {
     generatePreview(request.text)

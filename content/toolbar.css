@@ -565,11 +565,27 @@
 }
 
 .lexis-description-indicator.visible {
-  opacity: 1;
+  opacity: 0.85;
   transform: scale(1);
+  animation: indicator-appear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes indicator-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(10px);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
 }
 
 .lexis-description-indicator:hover {
+  opacity: 1;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.2) 100%);
   border-color: var(--primary-green-light);
   box-shadow:
