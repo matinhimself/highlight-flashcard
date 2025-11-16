@@ -52,7 +52,7 @@ class LexisToolbar {
   }
 
   async loadIcons() {
-    const iconNames = ['sparkles', 'book-marked', 'pencil', 'eye', 'x'];
+    const iconNames = ['sparkles', 'book-marked', 'pencil', 'eye', 'x', 'book-open'];
 
     for (const name of iconNames) {
       try {
@@ -226,9 +226,11 @@ class LexisToolbar {
     const contentEl = describeEl.querySelector('.lexis-describe-content');
 
     contentEl.innerHTML = `
-      <div class="lexis-toolbar-loading">
-        <div class="lexis-toolbar-spinner"></div>
-        <span>Loading describe models...</span>
+      <div class="lexis-describe-loading">
+        <div class="lexis-describe-loading-icon">
+          ${this.getIcon('sparkles')}
+        </div>
+        <span class="lexis-describe-loading-text">Loading models...</span>
       </div>
     `;
 
@@ -309,25 +311,40 @@ class LexisToolbar {
     const describeEl = this.toolbar.querySelector('.lexis-toolbar-describe');
     const contentEl = describeEl.querySelector('.lexis-describe-content');
 
-    // Show loading state
+    // Show minimal custom loading state
     contentEl.innerHTML = `
-      <div class="lexis-toolbar-loading">
-        <div class="lexis-toolbar-spinner"></div>
-        <span>Describing text...</span>
+      <div class="lexis-describe-loading">
+        <div class="lexis-describe-loading-icon">
+          ${this.getIcon('sparkles')}
+        </div>
+        <span class="lexis-describe-loading-text">Generating description...</span>
       </div>
     `;
 
     try {
+      // Generate XPath for the selection
+      const xpath = this.getXPathForSelection();
+      const selectionRect = this.selectionRange.getBoundingClientRect();
+
       const response = await chrome.runtime.sendMessage({
         action: 'describeWithPrompt',
         text: this.selectedText,
         sourceUrl: window.location.href,
         sourceTitle: document.title,
-        promptId: promptId
+        promptId: promptId,
+        xpath: xpath,
+        position: {
+          x: selectionRect.left + window.scrollX,
+          y: selectionRect.top + window.scrollY
+        }
       });
 
       if (response.success) {
         this.showNotification('Description saved!', 'success');
+
+        // Inject visual indicator at the highlight position
+        this.injectDescriptionIndicator(xpath, response.highlightId, selectionRect);
+
         this.hideToolbar();
       } else {
         throw new Error(response.error || 'Failed to describe text');
@@ -337,6 +354,197 @@ class LexisToolbar {
       this.showNotification('Failed to describe text', 'error');
       // Go back to describe options on error
       await this.renderDescribeOptions();
+    }
+  }
+
+  /**
+   * Generate XPath for the current selection
+   * @returns {string} XPath expression
+   */
+  getXPathForSelection() {
+    if (!this.selectionRange) return '';
+
+    try {
+      const container = this.selectionRange.commonAncestorContainer;
+      const node = container.nodeType === Node.TEXT_NODE ? container.parentNode : container;
+
+      // Generate XPath to the node
+      const xpath = this.getXPath(node);
+      return xpath;
+    } catch (error) {
+      console.error('Error generating XPath:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Generate XPath for a DOM node
+   * @param {Node} node - DOM node
+   * @returns {string} XPath expression
+   */
+  getXPath(node) {
+    if (node.id) {
+      return `//*[@id="${node.id}"]`;
+    }
+
+    const parts = [];
+    while (node && node.nodeType === Node.ELEMENT_NODE) {
+      let index = 0;
+      let sibling = node.previousSibling;
+
+      while (sibling) {
+        if (sibling.nodeType === Node.ELEMENT_NODE && sibling.nodeName === node.nodeName) {
+          index++;
+        }
+        sibling = sibling.previousSibling;
+      }
+
+      const tagName = node.nodeName.toLowerCase();
+      const pathIndex = index > 0 ? `[${index + 1}]` : '';
+      parts.unshift(tagName + pathIndex);
+
+      node = node.parentNode;
+    }
+
+    return parts.length ? '/' + parts.join('/') : '';
+  }
+
+  /**
+   * Inject a visual indicator at the highlight position
+   * @param {string} xpath - XPath of the highlight
+   * @param {string} highlightId - ID of the saved highlight
+   * @param {DOMRect} rect - Position rectangle
+   */
+  injectDescriptionIndicator(xpath, highlightId, rect) {
+    // Remove any existing indicator for this highlight
+    const existingIndicator = document.querySelector(`[data-highlight-id="${highlightId}"]`);
+    if (existingIndicator) {
+      existingIndicator.remove();
+    }
+
+    // Create indicator element
+    const indicator = document.createElement('div');
+    indicator.className = 'lexis-description-indicator';
+    indicator.dataset.highlightId = highlightId;
+    indicator.dataset.xpath = xpath;
+    indicator.innerHTML = `
+      <div class="lexis-description-indicator-icon">
+        ${this.getIcon('book-open')}
+      </div>
+    `;
+
+    // Position the indicator
+    indicator.style.left = `${rect.left + window.scrollX}px`;
+    indicator.style.top = `${rect.top + window.scrollY - 30}px`;
+
+    // Add click handler to show description
+    indicator.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await this.showDescriptionPopover(highlightId, indicator);
+    });
+
+    document.body.appendChild(indicator);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      indicator.classList.add('visible');
+    });
+
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      if (indicator && indicator.parentNode) {
+        indicator.classList.remove('visible');
+        setTimeout(() => indicator.remove(), 300);
+      }
+    }, 10000);
+  }
+
+  /**
+   * Show description popover for a highlight
+   * @param {string} highlightId - ID of the highlight
+   * @param {HTMLElement} anchorEl - Element to anchor popover to
+   */
+  async showDescriptionPopover(highlightId, anchorEl) {
+    try {
+      // Get the highlight from storage
+      const response = await chrome.runtime.sendMessage({
+        action: 'getHighlight',
+        highlightId: highlightId
+      });
+
+      if (!response.success || !response.highlight) {
+        throw new Error('Highlight not found');
+      }
+
+      const highlight = response.highlight;
+
+      // Remove any existing popover
+      const existingPopover = document.querySelector('.lexis-description-popover');
+      if (existingPopover) {
+        existingPopover.remove();
+      }
+
+      // Create popover
+      const popover = document.createElement('div');
+      popover.className = 'lexis-description-popover';
+
+      const description = highlight.description || 'No description available';
+      const tags = highlight.tags ? highlight.tags.map(tag =>
+        `<span class="lexis-description-tag">${this.escapeHtml(tag)}</span>`
+      ).join('') : '';
+
+      popover.innerHTML = `
+        <div class="lexis-description-popover-header">
+          <div class="lexis-description-popover-title">
+            ${this.getIcon('sparkles')}
+            <span>${highlight.promptName || 'Description'}</span>
+          </div>
+          <button class="lexis-description-popover-close">
+            ${this.getIcon('x')}
+          </button>
+        </div>
+        <div class="lexis-description-popover-content">
+          <div class="lexis-description-popover-text">${this.escapeHtml(highlight.text)}</div>
+          <div class="lexis-description-popover-description">${this.escapeHtml(description)}</div>
+          ${tags ? `<div class="lexis-description-popover-tags">${tags}</div>` : ''}
+        </div>
+      `;
+
+      // Position popover near the indicator
+      const rect = anchorEl.getBoundingClientRect();
+      popover.style.left = `${rect.left + window.scrollX}px`;
+      popover.style.top = `${rect.bottom + window.scrollY + 10}px`;
+
+      document.body.appendChild(popover);
+
+      // Add close handler
+      const closeBtn = popover.querySelector('.lexis-description-popover-close');
+      closeBtn.addEventListener('click', () => {
+        popover.classList.remove('visible');
+        setTimeout(() => popover.remove(), 300);
+      });
+
+      // Close on outside click
+      const closeOnOutsideClick = (e) => {
+        if (!popover.contains(e.target) && e.target !== anchorEl) {
+          popover.classList.remove('visible');
+          setTimeout(() => popover.remove(), 300);
+          document.removeEventListener('mousedown', closeOnOutsideClick);
+        }
+      };
+
+      setTimeout(() => {
+        document.addEventListener('mousedown', closeOnOutsideClick);
+      }, 100);
+
+      // Animate in
+      requestAnimationFrame(() => {
+        popover.classList.add('visible');
+      });
+
+    } catch (error) {
+      console.error('Error showing description:', error);
+      this.showNotification('Failed to load description', 'error');
     }
   }
 
