@@ -14,6 +14,7 @@ class LexisToolbar {
     this.describeMenuOpen = false;
     this.describePrompts = [];
     this.iconCache = {};
+    this.loadedIndicators = new Set(); // Track loaded indicators to avoid duplicates
 
     this.init();
     this.loadDescribePrompts();
@@ -75,6 +76,9 @@ class LexisToolbar {
         this.iconCache[name] = '';
       }
     }
+
+    // After icons are loaded, restore indicators for this page
+    await this.restoreIndicators();
   }
 
   handleSelectionChange() {
@@ -410,12 +414,106 @@ class LexisToolbar {
   }
 
   /**
+   * Restore description indicators for the current page
+   */
+  async restoreIndicators() {
+    try {
+      // Get highlights for this URL
+      const response = await chrome.runtime.sendMessage({
+        action: 'getHighlightsForUrl',
+        url: window.location.href
+      });
+
+      if (!response.success || !response.highlights) {
+        return;
+      }
+
+      const highlights = response.highlights;
+
+      // Wait for DOM to be ready
+      if (document.readyState === 'loading') {
+        await new Promise(resolve => {
+          document.addEventListener('DOMContentLoaded', resolve, { once: true });
+        });
+      }
+
+      // Additional delay to ensure page is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Inject indicator for each highlight
+      for (const highlight of highlights) {
+        if (highlight.id && (highlight.xpath || highlight.position)) {
+          this.restoreIndicatorForHighlight(highlight);
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring indicators:', error);
+    }
+  }
+
+  /**
+   * Restore a single indicator for a highlight
+   * @param {Object} highlight - Highlight object
+   */
+  restoreIndicatorForHighlight(highlight) {
+    // Skip if already loaded
+    if (this.loadedIndicators.has(highlight.id)) {
+      return;
+    }
+
+    let targetElement = null;
+    let rect = null;
+
+    // Try to find element using XPath
+    if (highlight.xpath) {
+      try {
+        const result = document.evaluate(
+          highlight.xpath,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null
+        );
+        targetElement = result.singleNodeValue;
+
+        if (targetElement) {
+          rect = targetElement.getBoundingClientRect();
+        }
+      } catch (error) {
+        console.warn('Failed to locate element with XPath:', error);
+      }
+    }
+
+    // Fallback to saved position if XPath lookup failed
+    if (!rect && highlight.position) {
+      rect = {
+        left: highlight.position.x - window.scrollX,
+        top: highlight.position.y - window.scrollY,
+        right: highlight.position.x - window.scrollX,
+        bottom: highlight.position.y - window.scrollY
+      };
+    }
+
+    // Inject indicator if we have a position
+    if (rect) {
+      this.injectDescriptionIndicator(highlight.xpath || '', highlight.id, rect, false);
+      this.loadedIndicators.add(highlight.id);
+    }
+  }
+
+  /**
    * Inject a visual indicator at the highlight position
    * @param {string} xpath - XPath of the highlight
    * @param {string} highlightId - ID of the saved highlight
    * @param {DOMRect} rect - Position rectangle
+   * @param {boolean} autoHide - Whether to auto-hide after 10 seconds (default: true)
    */
-  injectDescriptionIndicator(xpath, highlightId, rect) {
+  injectDescriptionIndicator(xpath, highlightId, rect, autoHide = true) {
+    // Skip if already loaded
+    if (this.loadedIndicators.has(highlightId)) {
+      return;
+    }
+
     // Remove any existing indicator for this highlight
     const existingIndicator = document.querySelector(`[data-highlight-id="${highlightId}"]`);
     if (existingIndicator) {
@@ -450,13 +548,21 @@ class LexisToolbar {
       indicator.classList.add('visible');
     });
 
-    // Auto-hide after 10 seconds
-    setTimeout(() => {
-      if (indicator && indicator.parentNode) {
-        indicator.classList.remove('visible');
-        setTimeout(() => indicator.remove(), 300);
-      }
-    }, 10000);
+    // Mark as loaded
+    this.loadedIndicators.add(highlightId);
+
+    // Auto-hide after 10 seconds (only for newly created indicators)
+    if (autoHide) {
+      setTimeout(() => {
+        if (indicator && indicator.parentNode) {
+          indicator.classList.remove('visible');
+          setTimeout(() => {
+            indicator.remove();
+            this.loadedIndicators.delete(highlightId);
+          }, 300);
+        }
+      }, 10000);
+    }
   }
 
   /**
