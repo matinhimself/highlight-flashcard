@@ -1093,9 +1093,9 @@ async function confirmDelete() {
 
     try {
         if (currentDeletingType === 'flashcard') {
-            await Storage.deleteFlashcard(currentDeletingId);
+            await Storage.deleteFlashcardWithSync(currentDeletingId);
         } else if (currentDeletingType === 'highlight') {
-            await Storage.deleteHighlight(currentDeletingId);
+            await Storage.deleteHighlightWithSync(currentDeletingId);
         }
 
         closeDeleteModal();

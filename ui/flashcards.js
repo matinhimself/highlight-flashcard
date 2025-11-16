@@ -708,7 +708,7 @@ async function confirmDelete() {
   cancelButton.disabled = true;
 
   try {
-    const success = await Storage.deleteFlashcard(currentDeletingId);
+    const success = await Storage.deleteFlashcardWithSync(currentDeletingId);
 
     if (success) {
       closeDeleteModal();
