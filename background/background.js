@@ -27,6 +27,9 @@ chrome.runtime.onInstalled.addListener(async () => {
   await initializeDefaults();
 
   createContextMenu();
+
+  // Initialize badge count
+  await updateBadgeCount();
 });
 
 /**
@@ -99,6 +102,39 @@ async function createContextMenu() {
     });
   }
 }
+
+/**
+ * Update extension badge with flashcard count
+ */
+async function updateBadgeCount() {
+  try {
+    const flashcards = await Storage.getFlashcards();
+    const count = flashcards.length;
+
+    if (count === 0) {
+      // Clear badge if no flashcards
+      chrome.action.setBadgeText({ text: '' });
+    } else {
+      // Show count with proper formatting
+      const badgeText = count > 999 ? '999+' : count.toString();
+      chrome.action.setBadgeText({ text: badgeText });
+      chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' }); // Indigo color
+    }
+
+    console.log(`Badge updated: ${count} flashcards`);
+  } catch (error) {
+    console.error('Error updating badge count:', error);
+  }
+}
+
+/**
+ * Listen for storage changes to update badge
+ */
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.flashcards) {
+    updateBadgeCount();
+  }
+});
 
 /**
  * Handle context menu clicks
@@ -344,8 +380,8 @@ async function createFlashcard(selectedText, sourceUrl) {
       'success'
     );
 
-    // Clear badge
-    chrome.action.setBadgeText({ text: '' });
+    // Update badge with new count
+    await updateBadgeCount();
 
     console.log('Flashcard created:', flashcard);
 
@@ -370,8 +406,8 @@ async function createFlashcard(selectedText, sourceUrl) {
       'error'
     );
 
-    // Clear badge
-    chrome.action.setBadgeText({ text: '' });
+    // Restore badge with current count
+    await updateBadgeCount();
   }
 }
 
@@ -608,8 +644,8 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId,
       'success'
     );
 
-    // Clear badge
-    chrome.action.setBadgeText({ text: '' });
+    // Restore badge with flashcard count
+    await updateBadgeCount();
 
     console.log('Description created:', highlight);
 
@@ -637,8 +673,8 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId,
       'error'
     );
 
-    // Clear badge
-    chrome.action.setBadgeText({ text: '' });
+    // Restore badge with flashcard count
+    await updateBadgeCount();
 
     throw error;
   }
@@ -1194,6 +1230,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Perform initial sync on startup (if enabled)
 performInitialSync();
+
+// Initialize badge count on startup
+updateBadgeCount();
 
 // Periodic sync every 5 minutes (if enabled)
 setInterval(async () => {
