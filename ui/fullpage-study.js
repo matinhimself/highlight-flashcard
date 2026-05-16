@@ -1109,6 +1109,13 @@ async function confirmDelete() {
 /**
  * Open detail modal
  */
+function appendDetailChatMessage(container, text, role) {
+    const msg = document.createElement('div');
+    msg.className = `ask-ai-message ${role}`;
+    msg.textContent = text;
+    container.appendChild(msg);
+}
+
 function openDetailModal(id, type) {
     currentDetailId = id;
     currentDetailType = type;
@@ -1246,6 +1253,49 @@ function openDetailModal(id, type) {
             ${tagsHtml}
             ${metaHtml}
         `;
+
+        // Append Ask AI chat panel
+        const chatPanel = document.createElement('div');
+        chatPanel.className = 'detail-ask-ai';
+        chatPanel.innerHTML = `
+            <h3 class="detail-section-label">Ask AI</h3>
+            <div class="ask-ai-messages"></div>
+            <div class="ask-ai-input-row">
+                <input type="text" class="ask-ai-input" placeholder="Ask a question about this highlight..." maxlength="500">
+                <button class="ask-ai-send-btn">Send</button>
+            </div>
+        `;
+        modalBody.appendChild(chatPanel);
+
+        const aiInput = chatPanel.querySelector('.ask-ai-input');
+        const aiSend = chatPanel.querySelector('.ask-ai-send-btn');
+        const aiMessages = chatPanel.querySelector('.ask-ai-messages');
+
+        const sendQuestion = async () => {
+            const question = aiInput.value.trim();
+            if (!question) return;
+            appendDetailChatMessage(aiMessages, question, 'user');
+            aiInput.value = '';
+            aiSend.disabled = true;
+            const typing = document.createElement('div');
+            typing.className = 'ask-ai-typing';
+            typing.textContent = 'Thinking…';
+            aiMessages.appendChild(typing);
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+            try {
+                const response = await chrome.runtime.sendMessage({ action: 'chatAboutHighlight', highlightId: id, question });
+                typing.remove();
+                appendDetailChatMessage(aiMessages, response?.answer || response?.error || 'No response.', 'ai');
+            } catch {
+                typing.remove();
+                appendDetailChatMessage(aiMessages, 'Could not reach the AI. Check your API key.', 'ai');
+            }
+            aiSend.disabled = false;
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+        };
+
+        aiSend.addEventListener('click', sendQuestion);
+        aiInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendQuestion(); });
     }
 
     detailModal.classList.add('active');

@@ -14,16 +14,18 @@
 
     <!-- Tab Navigation -->
     <div class="popup-tabs">
-      <button class="popup-tab active" data-tab="flashcards">
-        <img src="icons/book-marked.svg" alt="Flashcards">
-        <span>Flashcards</span>
-        <span class="tab-count" id="flashcardCount">0</span>
-      </button>
-      <button class="popup-tab" data-tab="highlights">
-        <img src="icons/notebook-pen.svg" alt="Notes">
-        <span>Notes</span>
-        <span class="tab-count" id="highlightsCount">0</span>
-      </button>
+      <div class="tabs-track">
+        <button class="popup-tab active" data-tab="flashcards">
+          <img src="icons/book-marked.svg" alt="Flashcards">
+          <span>Flashcards</span>
+          <span class="tab-count" id="flashcardCount">0</span>
+        </button>
+        <button class="popup-tab" data-tab="highlights">
+          <img src="icons/notebook-pen.svg" alt="Notes">
+          <span>Notes</span>
+          <span class="tab-count" id="highlightsCount">0</span>
+        </button>
+      </div>
     </div>
 
     <!-- Tab Contents -->
@@ -76,47 +78,13 @@
       </div>
     </div>
 
-    <div class="popup-footer">
-      <button id="settingsBtn" class="settings-link">
-        <img src="icons/settings.svg" alt="Settings">
-        Settings
-      </button>
-    </div>
   </div>
 
-  <!-- Loading Progress Modal -->
+  <!-- Loading Modal -->
   <div id="loadingModal" class="modal hidden">
     <div class="modal-content loading-content">
-      <div class="loading-header">
-        <div class="loading-spinner"></div>
-        <h2 id="loadingTitle">Creating Flashcard...</h2>
-      </div>
-      <div class="loading-body">
-        <div class="progress-steps">
-          <div class="progress-step" id="step1">
-            <div class="step-icon">📝</div>
-            <div class="step-info">
-              <div class="step-title">Preparing</div>
-              <div class="step-status">Getting ready...</div>
-            </div>
-          </div>
-          <div class="progress-step" id="step2">
-            <div class="step-icon">✨</div>
-            <div class="step-info">
-              <div class="step-title">AI Processing</div>
-              <div class="step-status">Waiting...</div>
-            </div>
-          </div>
-          <div class="progress-step" id="step3">
-            <div class="step-icon">💾</div>
-            <div class="step-info">
-              <div class="step-title">Saving</div>
-              <div class="step-status">Waiting...</div>
-            </div>
-          </div>
-        </div>
-        <div class="loading-text" id="loadingText"></div>
-      </div>
+      <div class="loading-spinner"></div>
+      <div class="loading-label" id="loadingTitle">Processing...</div>
     </div>
   </div>
 
