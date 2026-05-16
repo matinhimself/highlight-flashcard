@@ -6,25 +6,28 @@ import Storage from '../lib/storage.js';
 
 // DOM elements
 let loadingModal;
-let successModal;
 let flashcardsList;
 let highlightsList;
 let flashcardsEmpty;
 let highlightsEmpty;
+let previewCard;
 
 // State
 let currentTab = 'flashcards';
 const MAX_POPUP_ITEMS = 8;
 
+// Pending preview data for "Save as Flashcard" from context menu preview
+let pendingPreviewText = '';
+let pendingPreviewUrl = '';
+
 // Initialize popup
 async function init() {
-  // Get DOM elements
   loadingModal = document.getElementById('loadingModal');
-  successModal = document.getElementById('successModal');
   flashcardsList = document.getElementById('flashcardsList');
   highlightsList = document.getElementById('highlightsList');
   flashcardsEmpty = document.getElementById('flashcardsEmpty');
   highlightsEmpty = document.getElementById('highlightsEmpty');
+  previewCard = document.getElementById('previewCard');
 
   await loadCounts();
   await loadRecentItems();
@@ -32,14 +35,10 @@ async function init() {
   setupMessageListener();
 }
 
-/**
- * Load counts for flashcards and highlights
- */
 async function loadCounts() {
   try {
     const flashcards = await Storage.getFlashcards();
     const highlights = await Storage.getHighlights();
-
     document.getElementById('flashcardCount').textContent = flashcards.length;
     document.getElementById('highlightsCount').textContent = highlights.length;
   } catch (error) {
@@ -47,12 +46,8 @@ async function loadCounts() {
   }
 }
 
-/**
- * Load recent flashcards and highlights
- */
 async function loadRecentItems() {
   try {
-    // Load flashcards
     const flashcards = await Storage.getFlashcards();
     const recentFlashcards = flashcards.slice(0, MAX_POPUP_ITEMS);
 
@@ -64,7 +59,6 @@ async function loadRecentItems() {
       flashcardsList.innerHTML = recentFlashcards.map(card => createFlashcardItem(card)).join('');
     }
 
-    // Load highlights
     const highlights = await Storage.getHighlights();
     const recentHighlights = highlights.slice(0, MAX_POPUP_ITEMS);
 
@@ -73,14 +67,69 @@ async function loadRecentItems() {
       highlightsList.innerHTML = '';
     } else {
       highlightsEmpty.classList.add('hidden');
-      highlightsList.innerHTML = recentHighlights.map(highlight => createHighlightItem(highlight)).join('');
+      highlightsList.innerHTML = recentHighlights.map(h => createHighlightItem(h)).join('');
     }
 
-    // Add click listeners to items
-    attachItemClickListeners();
+    attachItemListeners();
   } catch (error) {
     console.error('Error loading recent items:', error);
   }
+}
+
+/**
+ * Build flashcard details HTML for expanded view
+ */
+function buildFlashcardDetails(flashcard) {
+  const data = flashcard.data || {};
+  const pos = data.partOfSpeech || '';
+  const definition = data.definition || flashcard.definition || '';
+  const example = data.example || '';
+
+  let html = '<div class="item-details-inner">';
+  if (pos) {
+    html += `<div class="detail-field"><span class="field-label">Part of Speech</span><span class="field-value pos">${escapeHtml(pos)}</span></div>`;
+  }
+  if (definition) {
+    html += `<div class="detail-field"><span class="field-label">Definition</span><span class="field-value">${escapeHtml(definition)}</span></div>`;
+  }
+  if (example) {
+    html += `<div class="detail-field"><span class="field-label">Example</span><span class="field-value"><em>${escapeHtml(example)}</em></span></div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+/**
+ * Build highlight details HTML for expanded view (with chat)
+ */
+function buildHighlightDetails(highlight) {
+  const description = highlight.description || '';
+  const tags = highlight.tags && highlight.tags.length > 0
+    ? highlight.tags.map(t => `<span style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);padding:1px 5px;border-radius:4px;font-size:9px;color:#34d399;">#${escapeHtml(t)}</span>`).join(' ')
+    : '';
+
+  let html = '<div class="item-details-inner">';
+  if (description) {
+    html += `<div class="detail-field"><span class="field-label">Description</span><span class="field-value">${escapeHtml(description)}</span></div>`;
+  }
+  if (tags) {
+    html += `<div class="detail-field" style="margin-top:4px;">${tags}</div>`;
+  }
+  html += '</div>';
+
+  // Chat panel
+  html += `
+    <div class="item-chat">
+      <div class="chat-label">Ask AI about this highlight</div>
+      <div class="chat-messages"></div>
+      <div class="chat-input-row">
+        <input type="text" class="chat-input" placeholder="Ask a question..." maxlength="300">
+        <button class="chat-send-btn" title="Send">→</button>
+      </div>
+    </div>
+  `;
+
+  return html;
 }
 
 /**
@@ -89,17 +138,29 @@ async function loadRecentItems() {
 function createFlashcardItem(flashcard) {
   const date = formatDate(new Date(flashcard.createdAt));
   const source = extractDomain(flashcard.sourceUrl);
+  const details = buildFlashcardDetails(flashcard);
+
   return `
-    <div class="list-item" data-type="flashcard" data-id="${flashcard.id}">
-      <div class="item-icon">
-        <img src="icons/book-marked.svg" alt="">
+    <div class="list-item" data-type="flashcard" data-id="${flashcard.id}" data-expanded="false">
+      <div class="item-row">
+        <div class="item-icon">
+          <img src="icons/book-marked.svg" alt="">
+        </div>
+        <div class="item-content">
+          <div class="item-title">${escapeHtml(flashcard.word)}</div>
+          <div class="item-meta">${source} · ${date}</div>
+        </div>
+        <div class="item-controls">
+          <button class="item-external-link" data-type="flashcard" data-id="${flashcard.id}" title="Open in full page">
+            <img src="icons/external-link.svg" alt="">
+          </button>
+          <div class="item-expand-arrow">
+            <img src="icons/chevron-down.svg" alt="">
+          </div>
+        </div>
       </div>
-      <div class="item-content">
-        <div class="item-title">${escapeHtml(flashcard.word)}</div>
-        <div class="item-meta">${source} • ${date}</div>
-      </div>
-      <div class="item-arrow">
-        <img src="icons/chevron-down.svg" alt="" style="transform: rotate(-90deg);">
+      <div class="item-details">
+        ${details}
       </div>
     </div>
   `;
@@ -111,36 +172,151 @@ function createFlashcardItem(flashcard) {
 function createHighlightItem(highlight) {
   const date = formatDate(new Date(highlight.createdAt));
   const source = extractDomain(highlight.sourceUrl);
-  const truncatedText = highlight.text.length > 60
-    ? highlight.text.substring(0, 60) + '...'
+  const truncatedText = highlight.text.length > 55
+    ? highlight.text.substring(0, 55) + '…'
     : highlight.text;
   const typeIcon = highlight.type === 'described' ? '📝' : '📌';
+  const details = buildHighlightDetails(highlight);
 
   return `
-    <div class="list-item" data-type="highlight" data-id="${highlight.id}">
-      <div class="item-icon type-badge">${typeIcon}</div>
-      <div class="item-content">
-        <div class="item-title">${escapeHtml(truncatedText)}</div>
-        <div class="item-meta">${source} • ${date}</div>
+    <div class="list-item" data-type="highlight" data-id="${highlight.id}" data-expanded="false">
+      <div class="item-row">
+        <div class="item-icon type-badge">${typeIcon}</div>
+        <div class="item-content">
+          <div class="item-title">${escapeHtml(truncatedText)}</div>
+          <div class="item-meta">${source} · ${date}</div>
+        </div>
+        <div class="item-controls">
+          <button class="item-external-link" data-type="highlight" data-id="${highlight.id}" title="Open in full page">
+            <img src="icons/external-link.svg" alt="">
+          </button>
+          <div class="item-expand-arrow">
+            <img src="icons/chevron-down.svg" alt="">
+          </div>
+        </div>
       </div>
-      <div class="item-arrow">
-        <img src="icons/chevron-down.svg" alt="" style="transform: rotate(-90deg);">
+      <div class="item-details">
+        ${details}
       </div>
     </div>
   `;
 }
 
 /**
- * Attach click listeners to list items
+ * Attach event listeners to list items
  */
-function attachItemClickListeners() {
-  document.querySelectorAll('.list-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const type = item.dataset.type;
-      const id = item.dataset.id;
+function attachItemListeners() {
+  // Expand/collapse on item row click
+  document.querySelectorAll('.item-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      // Don't expand if clicking external link button
+      if (e.target.closest('.item-external-link')) return;
+      const item = row.closest('.list-item');
+      toggleItemExpanded(item);
+    });
+  });
+
+  // External link buttons
+  document.querySelectorAll('.item-external-link').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const type = btn.dataset.type;
+      const id = btn.dataset.id;
       openItemInFullpage(type, id);
     });
   });
+
+  // Chat send buttons (event delegation on the lists)
+  [flashcardsList, highlightsList].forEach(list => {
+    list.addEventListener('keydown', handleChatKeydown);
+    list.addEventListener('click', handleChatSend);
+  });
+}
+
+/**
+ * Toggle item expanded state
+ */
+function toggleItemExpanded(item) {
+  const isExpanded = item.dataset.expanded === 'true';
+  item.dataset.expanded = isExpanded ? 'false' : 'true';
+  item.classList.toggle('expanded', !isExpanded);
+}
+
+/**
+ * Handle Enter key in chat inputs
+ */
+function handleChatKeydown(e) {
+  if (e.key === 'Enter' && e.target.classList.contains('chat-input')) {
+    const item = e.target.closest('.list-item');
+    if (item) sendChatMessage(item, e.target);
+  }
+}
+
+/**
+ * Handle click on chat send buttons
+ */
+function handleChatSend(e) {
+  if (e.target.closest('.chat-send-btn')) {
+    const item = e.target.closest('.list-item');
+    const input = item ? item.querySelector('.chat-input') : null;
+    if (item && input) sendChatMessage(item, input);
+  }
+}
+
+/**
+ * Send a chat message about a highlight
+ */
+async function sendChatMessage(item, input) {
+  const question = input.value.trim();
+  if (!question) return;
+
+  const highlightId = item.dataset.id;
+  const messagesContainer = item.querySelector('.chat-messages');
+  const sendBtn = item.querySelector('.chat-send-btn');
+
+  // Show user message
+  appendChatMessage(messagesContainer, question, 'user');
+  input.value = '';
+  sendBtn.disabled = true;
+
+  // Show typing indicator
+  const typing = document.createElement('div');
+  typing.className = 'chat-typing';
+  typing.textContent = 'Thinking…';
+  messagesContainer.appendChild(typing);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'chatAboutHighlight',
+      highlightId,
+      question
+    });
+
+    typing.remove();
+
+    if (response && response.success) {
+      appendChatMessage(messagesContainer, response.answer, 'ai');
+    } else {
+      appendChatMessage(messagesContainer, response?.error || 'Failed to get a response.', 'ai');
+    }
+  } catch (err) {
+    typing.remove();
+    appendChatMessage(messagesContainer, 'Could not reach the AI. Check your API key.', 'ai');
+  }
+
+  sendBtn.disabled = false;
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * Append a chat message bubble
+ */
+function appendChatMessage(container, text, role) {
+  const msg = document.createElement('div');
+  msg.className = `chat-message ${role}`;
+  msg.innerHTML = `<span class="chat-bubble">${escapeHtml(text)}</span>`;
+  container.appendChild(msg);
 }
 
 /**
@@ -150,6 +326,52 @@ function openItemInFullpage(type, id) {
   const tab = type === 'flashcard' ? 'flashcards' : 'highlights';
   const url = chrome.runtime.getURL(`ui/fullpage-study.html#${tab}?id=${id}&modal=detail`);
   chrome.tabs.create({ url });
+}
+
+/**
+ * Show the preview card after flashcard creation
+ */
+function showPreviewCard(flashcard) {
+  hideLoadingModal();
+
+  if (!flashcard) return;
+
+  const data = flashcard.data || {};
+  const word = data.word || flashcard.word || '';
+  const pos = data.partOfSpeech || '';
+  const definition = data.definition || flashcard.definition || '';
+  const example = data.example || '';
+
+  document.getElementById('previewWord').textContent = word;
+  document.getElementById('previewPos').textContent = pos;
+  document.getElementById('previewDefinition').textContent = definition;
+  document.getElementById('previewExample').textContent = example ? `"${example}"` : '';
+
+  previewCard.classList.remove('hidden');
+
+  // Auto-dismiss after 7 seconds
+  setTimeout(() => {
+    if (!previewCard.classList.contains('hidden')) {
+      previewCard.classList.add('hidden');
+    }
+  }, 7000);
+}
+
+/**
+ * Show the AI preview modal (from context menu)
+ */
+function showPreviewModal(previewHtml, selectionText, sourceUrl) {
+  pendingPreviewText = selectionText || '';
+  pendingPreviewUrl = sourceUrl || '';
+
+  document.getElementById('previewModalBody').innerHTML = previewHtml || '<p>No preview available.</p>';
+  document.getElementById('previewModal').classList.remove('hidden');
+}
+
+function closePreviewModal() {
+  document.getElementById('previewModal').classList.add('hidden');
+  pendingPreviewText = '';
+  pendingPreviewUrl = '';
 }
 
 /**
@@ -166,22 +388,16 @@ function formatDate(date) {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-/**
- * Escape HTML
- */
 function escapeHtml(text) {
+  if (!text) return '';
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
-/**
- * Extract domain from URL
- */
 function extractDomain(url) {
   try {
     const urlObj = new URL(url);
@@ -191,66 +407,61 @@ function extractDomain(url) {
   }
 }
 
-/**
- * Switch between tabs
- */
 function switchTab(tab) {
   currentTab = tab;
-
-  // Update tab buttons
   document.querySelectorAll('.popup-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
-
-  // Update panels
   document.querySelectorAll('.tab-panel').forEach(panel => {
     panel.classList.toggle('active', panel.id === `${tab}Panel`);
   });
 }
 
-/**
- * Set up event listeners
- */
 function setupEventListeners() {
-  const settingsBtn = document.getElementById('settingsBtn');
-  settingsBtn.addEventListener('click', openSettings);
+  document.getElementById('settingsBtn').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
-  const viewFlashcardsBtn = document.getElementById('viewFlashcardsBtn');
-  viewFlashcardsBtn.addEventListener('click', openFlashcards);
-
-  const closeSuccessBtn = document.getElementById('closeSuccessBtn');
-  closeSuccessBtn.addEventListener('click', closeSuccessModal);
-
-  // Tab switching
   document.querySelectorAll('.popup-tab').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  // Open fullpage buttons
-  document.getElementById('openFlashcardsFullpage').addEventListener('click', () => {
-    openStudyHub('flashcards');
+  document.getElementById('openFlashcardsFullpage').addEventListener('click', () => openStudyHub('flashcards'));
+  document.getElementById('openHighlightsFullpage').addEventListener('click', () => openStudyHub('highlights'));
+
+  document.getElementById('closePreviewCard').addEventListener('click', () => {
+    previewCard.classList.add('hidden');
   });
 
-  document.getElementById('openHighlightsFullpage').addEventListener('click', () => {
-    openStudyHub('highlights');
+  // Preview modal buttons
+  document.getElementById('closePreviewModal').addEventListener('click', closePreviewModal);
+  document.getElementById('dismissPreviewBtn').addEventListener('click', closePreviewModal);
+  document.getElementById('saveFromPreviewBtn').addEventListener('click', async () => {
+    if (!pendingPreviewText) return;
+    const btn = document.getElementById('saveFromPreviewBtn');
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+    try {
+      await chrome.runtime.sendMessage({
+        action: 'createFlashcard',
+        text: pendingPreviewText,
+        sourceUrl: pendingPreviewUrl
+      });
+    } catch (e) {
+      console.error('Error saving flashcard from preview:', e);
+    }
+    closePreviewModal();
   });
 }
 
-/**
- * Set up message listener for background script communications
- */
 function setupMessageListener() {
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Popup received message:', message);
-
+  chrome.runtime.onMessage.addListener((message) => {
     switch (message.type) {
       case 'FLASHCARD_PROGRESS':
         updateLoadingProgress(message.step, message.status, message.text);
         break;
       case 'FLASHCARD_CREATED':
-        showSuccessModal();
-        loadCounts(); // Refresh counts
-        loadRecentItems(); // Refresh items list
+        showPreviewCard(message.flashcard);
+        loadCounts();
+        loadRecentItems();
         break;
       case 'FLASHCARD_ERROR':
         hideLoadingModal();
@@ -259,34 +470,30 @@ function setupMessageListener() {
         updateLoadingProgress(message.step, message.status, message.text);
         break;
       case 'DESCRIBE_CREATED':
-        showSuccessModal();
-        loadCounts(); // Refresh counts
-        loadRecentItems(); // Refresh items list
+        hideLoadingModal();
+        loadCounts();
+        loadRecentItems();
         break;
       case 'DESCRIBE_ERROR':
         hideLoadingModal();
+        break;
+      case 'PREVIEW_RESULT':
+        if (message.result && message.result.success) {
+          showPreviewModal(message.result.preview, message.selectionText, message.sourceUrl);
+        }
         break;
     }
   });
 }
 
-/**
- * Update loading progress modal
- * @param {number} step - Step number (1-3)
- * @param {string} status - Status ('active', 'completed', or 'waiting')
- * @param {string} text - Optional loading text
- */
 function updateLoadingProgress(step, status, text = '') {
-  // Show loading modal if hidden
   if (loadingModal.classList.contains('hidden')) {
     loadingModal.classList.remove('hidden');
   }
 
-  // Update step status
   for (let i = 1; i <= 3; i++) {
     const stepElement = document.getElementById(`step${i}`);
     stepElement.classList.remove('active', 'completed');
-
     if (i < step) {
       stepElement.classList.add('completed');
     } else if (i === step) {
@@ -294,72 +501,31 @@ function updateLoadingProgress(step, status, text = '') {
     }
   }
 
-  // Update step statuses with custom text based on step
   if (step === 1) {
-    document.querySelector('#step1 .step-status').textContent = status === 'active' ? 'Preparing request...' : 'Ready';
+    document.querySelector('#step1 .step-status').textContent = status === 'active' ? 'Preparing…' : 'Ready';
   } else if (step === 2) {
-    document.querySelector('#step2 .step-status').textContent = status === 'active' ? 'Generating definition...' : (status === 'completed' ? 'Complete' : 'Waiting...');
+    document.querySelector('#step2 .step-status').textContent = status === 'active' ? 'Generating…' : (status === 'completed' ? 'Done' : 'Waiting…');
   } else if (step === 3) {
-    document.querySelector('#step3 .step-status').textContent = status === 'active' ? 'Saving flashcard...' : (status === 'completed' ? 'Saved!' : 'Waiting...');
+    document.querySelector('#step3 .step-status').textContent = status === 'active' ? 'Saving…' : (status === 'completed' ? 'Saved!' : 'Waiting…');
   }
 
-  // Update loading text if provided
   if (text) {
     document.getElementById('loadingText').textContent = text;
   }
 }
 
-/**
- * Hide loading modal
- */
 function hideLoadingModal() {
   loadingModal.classList.add('hidden');
-
-  // Reset progress steps
   for (let i = 1; i <= 3; i++) {
     const stepElement = document.getElementById(`step${i}`);
     stepElement.classList.remove('active', 'completed');
   }
-
-  // Clear loading text
   document.getElementById('loadingText').textContent = '';
 }
 
-/**
- * Show success modal
- */
-function showSuccessModal() {
-  hideLoadingModal();
-  successModal.classList.remove('hidden');
-}
-
-/**
- * Close success modal
- */
-function closeSuccessModal() {
-  successModal.classList.add('hidden');
-}
-
-/**
- * Open flashcards page
- */
-function openFlashcards() {
-  openStudyHub('flashcards');
-}
-
-/**
- * Open fullpage study hub
- */
 function openStudyHub(tab = 'flashcards') {
   const url = chrome.runtime.getURL(`ui/fullpage-study.html#${tab}`);
   chrome.tabs.create({ url });
-}
-
-/**
- * Open settings page
- */
-function openSettings() {
-  chrome.runtime.openOptionsPage();
 }
 
 // Initialize when DOM is ready

@@ -11,6 +11,7 @@ import { driveClient } from './drive-api.js';
 const CONTEXT_MENU_ID = 'create-flashcard';
 const DESCRIBE_PARENT_ID = 'describe-parent';
 const SAVE_TO_NOTEBOOK_ID = 'save-to-notebook';
+const PREVIEW_MENU_ID = 'preview-flashcard';
 
 // Track ongoing requests to prevent duplicates
 let isProcessing = false;
@@ -68,6 +69,13 @@ async function createContextMenu() {
   chrome.contextMenus.create({
     id: SAVE_TO_NOTEBOOK_ID,
     title: 'Save to Notebook',
+    contexts: ['selection']
+  });
+
+  // Create AI Preview menu item
+  chrome.contextMenus.create({
+    id: PREVIEW_MENU_ID,
+    title: 'AI Preview',
     contexts: ['selection']
   });
 
@@ -165,6 +173,23 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   // Handle Save to Notebook
   if (menuItemId === SAVE_TO_NOTEBOOK_ID) {
     await saveToNotebook(info.selectionText, tab.url, tab.title);
+    return;
+  }
+
+  // Handle AI Preview
+  if (menuItemId === PREVIEW_MENU_ID) {
+    try {
+      await chrome.action.openPopup();
+    } catch (e) {
+      console.log('Could not open popup for preview:', e);
+    }
+    const result = await generatePreview(info.selectionText);
+    sendMessageToPopup({
+      type: 'PREVIEW_RESULT',
+      result,
+      selectionText: info.selectionText,
+      sourceUrl: tab.url
+    });
     return;
   }
 
@@ -421,7 +446,7 @@ async function createFlashcard(selectedText, sourceUrl) {
  * @param {Object} position - Position coordinates {x, y}
  * @returns {Promise<string>} The ID of the saved highlight
  */
-async function createDescription(selectedText, sourceUrl, sourceTitle, promptId, xpath = '', position = null) {
+async function createDescription(selectedText, sourceUrl, sourceTitle, promptId, xpath = '', position = null, htmlText = '') {
   if (!selectedText || selectedText.trim() === '') {
     showNotification('Error', 'No text selected', 'error');
     return;
@@ -590,6 +615,7 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId,
     // Save to highlights with description and tags
     const highlight = {
       text: text.trim(),
+      ...(htmlText ? { htmlText } : {}),
       description: description,
       sourceUrl: sourceUrl,
       sourceTitle: sourceTitle || extractDomain(sourceUrl),
@@ -686,7 +712,7 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId,
  * @param {string} sourceUrl - The URL where text was selected
  * @param {string} sourceTitle - The page title where text was selected
  */
-async function saveToNotebook(selectedText, sourceUrl, sourceTitle) {
+async function saveToNotebook(selectedText, sourceUrl, sourceTitle, htmlText = '') {
   if (!selectedText || selectedText.trim() === '') {
     showNotification('Error', 'No text selected', 'error');
     return;
@@ -710,6 +736,10 @@ async function saveToNotebook(selectedText, sourceUrl, sourceTitle) {
       type: 'simple',
       createdAt: Date.now()
     };
+
+    if (htmlText) {
+      highlight.htmlText = htmlText;
+    }
 
     const saved = await Storage.addHighlight(highlight);
 
@@ -902,6 +932,51 @@ async function generatePreview(selectedText) {
 }
 
 /**
+ * Chat with AI about a saved highlight
+ * @param {string} highlightId - ID of the highlight to discuss
+ * @param {string} question - User's question
+ * @returns {Promise<Object>} {success, answer} or {success: false, error}
+ */
+async function chatAboutHighlight(highlightId, question) {
+  const settings = await Storage.getSettings();
+
+  if (!settings.apiKey) {
+    return { success: false, error: 'Please configure your API key in settings.' };
+  }
+
+  if (!question || !question.trim()) {
+    return { success: false, error: 'Please enter a question.' };
+  }
+
+  const highlights = await Storage.getHighlights();
+  const highlight = highlights.find(h => h.id === highlightId);
+
+  if (!highlight) {
+    return { success: false, error: 'Highlight not found.' };
+  }
+
+  const context = highlight.description
+    ? `Highlighted text: "${highlight.text}"\n\nAI description: "${highlight.description}"`
+    : `Highlighted text: "${highlight.text}"`;
+
+  const prompt = `You are a helpful assistant. The user has saved the following highlighted text from the web:\n\n${context}\n\nUser question: ${question}\n\nAnswer concisely (2-4 sentences).`;
+
+  try {
+    const client = new OpenRouterClient(settings.apiKey, settings.selectedModel);
+    const result = await client.createDefinition(question, prompt);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return { success: true, answer: result.definition };
+  } catch (error) {
+    console.error('Chat error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Apply markdown formatting to text
  * @param {string} text - Text with markdown syntax
  * @returns {string} HTML formatted text
@@ -998,7 +1073,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // Toolbar action: Save highlight
   if (request.action === 'saveHighlight') {
-    saveToNotebook(request.text, request.sourceUrl, request.sourceTitle)
+    saveToNotebook(request.text, request.sourceUrl, request.sourceTitle, request.htmlText || '')
       .then(() => sendResponse({ success: true }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
@@ -1014,7 +1089,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // Toolbar action: Describe with specific prompt
   if (request.action === 'describeWithPrompt') {
-    createDescription(request.text, request.sourceUrl, request.sourceTitle, request.promptId, request.xpath, request.position)
+    createDescription(request.text, request.sourceUrl, request.sourceTitle, request.promptId, request.xpath, request.position, request.htmlText || '')
       .then((highlightId) => sendResponse({ success: true, highlightId: highlightId }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
@@ -1054,6 +1129,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Toolbar action: Generate preview
   if (request.action === 'generatePreview') {
     generatePreview(request.text)
+      .then(result => sendResponse(result))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Chat about a highlight
+  if (request.action === 'chatAboutHighlight') {
+    chatAboutHighlight(request.highlightId, request.question)
       .then(result => sendResponse(result))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;

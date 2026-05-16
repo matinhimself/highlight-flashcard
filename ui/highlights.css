@@ -179,6 +179,11 @@
   border-left-width: 4px;
 }
 
+.highlight-styled-text {
+  white-space: normal;
+  line-height: 1.6;
+}
+
 .highlight-description {
   font-size: 13px;
   line-height: 1.5;

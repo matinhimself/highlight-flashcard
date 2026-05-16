@@ -10,7 +10,6 @@
   <div class="popup-container">
     <div class="popup-header">
       <h1>Lexis</h1>
-      <p class="subtitle">AI-Powered Learning</p>
     </div>
 
     <!-- Tab Navigation -->
@@ -36,6 +35,17 @@
           <button class="open-fullpage-btn" id="openFlashcardsFullpage" title="Open in full page">
             <img src="icons/external-link.svg" alt="Open in full page">
           </button>
+        </div>
+        <!-- Preview card (shown after creation) -->
+        <div id="previewCard" class="preview-card hidden">
+          <div class="preview-card-header">
+            <span class="preview-card-label">✓ Just created</span>
+            <button id="closePreviewCard" class="preview-close-btn">×</button>
+          </div>
+          <div class="preview-card-word" id="previewWord"></div>
+          <div class="preview-card-pos" id="previewPos"></div>
+          <div class="preview-card-definition" id="previewDefinition"></div>
+          <div class="preview-card-example" id="previewExample"></div>
         </div>
         <div class="items-list" id="flashcardsList">
           <!-- Flashcards will be rendered here -->
@@ -110,19 +120,19 @@
     </div>
   </div>
 
-  <!-- Success Modal -->
-  <div id="successModal" class="modal hidden">
-    <div class="modal-content success-content">
-      <div class="success-header">
-        <div class="success-icon">✓</div>
-        <h2>Flashcard Created!</h2>
+  <!-- AI Preview Modal (from context menu) -->
+  <div id="previewModal" class="modal hidden">
+    <div class="modal-content preview-modal-content">
+      <div class="preview-modal-header">
+        <h2>AI Preview</h2>
+        <button id="closePreviewModal" class="modal-close-btn">×</button>
       </div>
-      <div class="success-body">
-        <p>Your flashcard has been successfully created.</p>
-        <div class="success-actions">
-          <button id="viewFlashcardsBtn" class="button primary">View Flashcards</button>
-          <button id="closeSuccessBtn" class="button secondary">Close</button>
-        </div>
+      <div class="preview-modal-body" id="previewModalBody">
+        <!-- Rendered AI preview HTML -->
+      </div>
+      <div class="preview-modal-actions">
+        <button id="saveFromPreviewBtn" class="button primary">Save as Flashcard</button>
+        <button id="dismissPreviewBtn" class="button secondary">Dismiss</button>
       </div>
     </div>
   </div>
