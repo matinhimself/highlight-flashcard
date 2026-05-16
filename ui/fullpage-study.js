@@ -253,16 +253,16 @@ function setupModalListeners() {
     detailModalCloseBtn.addEventListener('click', closeDetailModal);
     detailModalCancelBtn.addEventListener('click', closeDetailModal);
     detailEditBtn.addEventListener('click', () => {
+        const id = currentDetailId;
+        const type = currentDetailType;
         closeDetailModal();
-        if (currentDetailId && currentDetailType) {
-            openEditModal(currentDetailId, currentDetailType);
-        }
+        if (id && type) openEditModal(id, type);
     });
     detailDeleteBtn.addEventListener('click', () => {
+        const id = currentDetailId;
+        const type = currentDetailType;
         closeDetailModal();
-        if (currentDetailId && currentDetailType) {
-            openDeleteModal(currentDetailId, currentDetailType);
-        }
+        if (id && type) openDeleteModal(id, type);
     });
 
     detailModal.querySelector('.modal-backdrop').addEventListener('click', closeDetailModal);
