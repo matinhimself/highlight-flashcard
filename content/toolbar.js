@@ -1026,22 +1026,144 @@ class LexisToolbar {
     if (!this.selectionRange) return '';
     try {
       const fragment = this.selectionRange.cloneContents();
-      const div = document.createElement('div');
-      div.appendChild(fragment);
-      div.querySelectorAll('script, style, iframe, object, embed').forEach(el => el.remove());
-      div.querySelectorAll('*').forEach(el => {
-        [...el.attributes].forEach(attr => {
-          if (attr.name.startsWith('on') ||
-              (attr.name === 'href' && /^javascript:/i.test(attr.value)) ||
-              attr.name === 'src') {
-            el.removeAttribute(attr.name);
-          }
-        });
-      });
-      return div.innerHTML;
+      const container = document.createElement('div');
+      container.appendChild(fragment);
+      const result = this.processNode(container).trim();
+      return result || '';
     } catch (e) {
       return '';
     }
+  }
+
+  /**
+   * Convert a DOM node tree to clean semantic HTML.
+   * Detects formatting from tag names and inline styles only —
+   * no page-specific classes or colors bleed through.
+   */
+  processNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent;
+      // Preserve text but collapse runs of whitespace into single spaces
+      return text.replace(/[ \t]+/g, ' ');
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+    const tag = node.tagName.toLowerCase();
+
+    // Skip elements that carry no readable content
+    if (['script', 'style', 'noscript', 'iframe', 'svg', 'canvas',
+         'button', 'input', 'select', 'textarea', 'nav', 'header',
+         'footer', 'aside', 'figure', 'figcaption'].includes(tag)) {
+      return '';
+    }
+
+    // Self-closing/simple block elements
+    if (tag === 'br') return '<br>';
+    if (tag === 'hr') return '<hr>';
+    if (tag === 'img') return '';
+
+    // Detect inline formatting from tag name AND inline style attribute
+    const inlineStyle = (node.getAttribute ? (node.getAttribute('style') || '') : '').toLowerCase();
+    const isBold = ['b', 'strong'].includes(tag)
+      || /font-weight\s*:\s*(bold|[6-9]\d{2})/.test(inlineStyle);
+    const isItalic = ['i', 'em'].includes(tag)
+      || /font-style\s*:\s*italic/.test(inlineStyle);
+    const isCode = ['code', 'kbd', 'samp', 'tt'].includes(tag)
+      || /font-family[^;]*(mono|courier|consolas|inconsolata|source.?code|fira.?code)/i.test(inlineStyle);
+    const isStrike = ['s', 'strike', 'del'].includes(tag)
+      || /text-decoration[^;]*line-through/.test(inlineStyle);
+    const isMark = tag === 'mark';
+
+    // Recurse into children
+    const children = [...node.childNodes].map(c => this.processNode(c)).join('');
+
+    // --- Block-level elements ---
+
+    // Headings
+    if (/^h[1-6]$/.test(tag)) {
+      const level = tag[1];
+      const text = children.trim();
+      return text ? `<h${level}>${text}</h${level}>\n` : '';
+    }
+
+    // Paragraphs and generic blocks → <p>
+    if (['p', 'div', 'section', 'article', 'main', 'address'].includes(tag)) {
+      const text = children.trim();
+      return text ? `<p>${text}</p>\n` : '\n';
+    }
+
+    // Preformatted / code blocks → preserve whitespace
+    if (['pre', 'xmp'].includes(tag)) {
+      const rawText = node.textContent;
+      const escaped = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<pre><code>${escaped}</code></pre>\n`;
+    }
+
+    // Lists
+    if (tag === 'ul') return children.trim() ? `<ul>${children}</ul>\n` : '';
+    if (tag === 'ol') return children.trim() ? `<ol>${children}</ol>\n` : '';
+    if (tag === 'li') {
+      const text = children.trim();
+      return text ? `<li>${text}</li>` : '';
+    }
+
+    // Blockquote
+    if (tag === 'blockquote') {
+      const text = children.trim();
+      return text ? `<blockquote>${text}</blockquote>\n` : '';
+    }
+
+    // Table cells — flatten to paragraphs with spacing
+    if (tag === 'td' || tag === 'th') {
+      const text = children.trim();
+      return text ? `<p>${text}</p>\n` : '';
+    }
+    if (['table', 'thead', 'tbody', 'tfoot', 'tr', 'caption', 'colgroup', 'col'].includes(tag)) {
+      return children;
+    }
+
+    // Definition lists
+    if (tag === 'dl') return children.trim() ? `<ul>${children}</ul>\n` : '';
+    if (tag === 'dt') return children.trim() ? `<li><strong>${children.trim()}</strong></li>` : '';
+    if (tag === 'dd') return children.trim() ? `<li>${children.trim()}</li>` : '';
+
+    // --- Inline elements ---
+
+    let result = children;
+
+    // Apply formatting in correct nesting order
+    if (isMark) result = `<mark>${result}</mark>`;
+    if (isStrike) result = `<s>${result}</s>`;
+    if (isCode) result = `<code>${result}</code>`;
+    else {
+      if (isItalic) result = `<em>${result}</em>`;
+      if (isBold) result = `<strong>${result}</strong>`;
+    }
+
+    // Links — keep href but nothing else
+    if (tag === 'a') {
+      const href = node.getAttribute ? node.getAttribute('href') : '';
+      if (href && !/^javascript:/i.test(href)) {
+        return `<a href="${href.replace(/"/g, '&quot;')}">${result}</a>`;
+      }
+      return result;
+    }
+
+    // Abbreviations
+    if (tag === 'abbr') {
+      const title = node.getAttribute ? node.getAttribute('title') : '';
+      return title
+        ? `<abbr title="${title.replace(/"/g, '&quot;')}">${result}</abbr>`
+        : result;
+    }
+
+    // Superscript / subscript
+    if (tag === 'sup') return `<sup>${result}</sup>`;
+    if (tag === 'sub') return `<sub>${result}</sub>`;
+
+    // All other inline wrappers (span, etc.) — just return children with any detected formatting
+    return result;
   }
 }
 
