@@ -14,7 +14,8 @@ class LexisToolbar {
     this.describeMenuOpen = false;
     this.describePrompts = [];
     this.iconCache = {};
-    this.loadedIndicators = new Set(); // Track loaded indicators to avoid duplicates
+    this.loadedIndicators = new Set();
+    this.savedRanges = new Map(); // id → Range for CSS Custom Highlights
 
     this.init();
     this.loadDescribePrompts();
@@ -325,15 +326,18 @@ class LexisToolbar {
       </div>
     `;
 
-    try {
-      // Generate XPath for the selection
-      const xpath = this.getXPathForSelection();
-      const selectionRect = this.selectionRange.getBoundingClientRect();
+    // Capture from live DOM before async
+    const htmlText = this.getSelectionHtml();
+    const xpath = this.getXPathForSelection();
+    const savedRange = this.selectionRange ? this.selectionRange.cloneRange() : null;
+    let selectionRect;
+    try { selectionRect = this.selectionRange.getBoundingClientRect(); } catch (e) { selectionRect = { left: 0, top: 0 }; }
 
+    try {
       const response = await chrome.runtime.sendMessage({
         action: 'describeWithPrompt',
         text: this.selectedText,
-        htmlText: this.getSelectionHtml(),
+        htmlText,
         sourceUrl: window.location.href,
         sourceTitle: document.title,
         promptId: promptId,
@@ -345,11 +349,12 @@ class LexisToolbar {
       });
 
       if (response.success) {
+        // Apply visual page highlight
+        if (savedRange && response.highlightId) {
+          this.applyPageHighlight(savedRange, response.highlightId);
+        }
         this.showNotification('Description saved!', 'success');
-
-        // Inject visual indicator at the highlight position
         this.injectDescriptionIndicator(xpath, response.highlightId, selectionRect);
-
         this.hideToolbar();
       } else {
         throw new Error(response.error || 'Failed to describe text');
@@ -357,7 +362,6 @@ class LexisToolbar {
     } catch (error) {
       console.error('Error describing text:', error);
       this.showNotification('Failed to describe text', 'error');
-      // Go back to describe options on error
       await this.renderDescribeOptions();
     }
   }
@@ -500,6 +504,9 @@ class LexisToolbar {
       this.injectDescriptionIndicator(highlight.xpath || '', highlight.id, rect, false);
       this.loadedIndicators.add(highlight.id);
     }
+
+    // Restore visual CSS highlight (works for both simple and described)
+    this.restorePageHighlight(highlight);
   }
 
   /**
@@ -761,19 +768,33 @@ class LexisToolbar {
   async saveHighlight(button) {
     button.classList.add('loading');
 
+    // Capture everything from live DOM BEFORE any async/await
     const htmlText = this.getSelectionHtml();
+    const xpath = this.getXPathForSelection();
+    const savedRange = this.selectionRange ? this.selectionRange.cloneRange() : null;
+    let position = null;
+    if (this.selectionRange) {
+      try {
+        const rect = this.selectionRange.getBoundingClientRect();
+        position = { x: rect.left + window.scrollX, y: rect.top + window.scrollY };
+      } catch (e) {}
+    }
 
     try {
-      // Send message to background script to save highlight
       const response = await chrome.runtime.sendMessage({
         action: 'saveHighlight',
         text: this.selectedText,
         htmlText,
+        xpath,
+        position,
         sourceUrl: window.location.href,
         sourceTitle: document.title
       });
 
       if (response.success) {
+        if (savedRange && response.highlightId) {
+          this.applyPageHighlight(savedRange, response.highlightId);
+        }
         this.showNotification('Highlight saved!', 'success');
         this.hideToolbar();
       } else {
@@ -1022,28 +1043,39 @@ class LexisToolbar {
     return div.innerHTML;
   }
 
+  /**
+   * Serialize the current selection to clean semantic HTML.
+   * Walks the LIVE DOM so getComputedStyle() captures CSS-class-based
+   * formatting (bold, italic, monospace) — not just inline style attrs.
+   */
   getSelectionHtml() {
     if (!this.selectionRange) return '';
     try {
-      const fragment = this.selectionRange.cloneContents();
-      const container = document.createElement('div');
-      container.appendChild(fragment);
-      const result = this.processNode(container).trim();
-      return result || '';
+      return this.serializeRange(this.selectionRange).trim();
     } catch (e) {
       return '';
     }
   }
 
-  /**
-   * Convert a DOM node tree to clean semantic HTML.
-   * Detects formatting from tag names and inline styles only —
-   * no page-specific classes or colors bleed through.
-   */
-  processNode(node) {
+  serializeRange(range) {
+    let root = range.commonAncestorContainer;
+    if (root.nodeType === Node.TEXT_NODE) root = root.parentNode;
+    return this.walkLiveNode(root, range);
+  }
+
+  walkLiveNode(node, range) {
+    if (!range.intersectsNode(node)) return '';
+
     if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent;
-      // Preserve text but collapse runs of whitespace into single spaces
+      let text = node.textContent;
+      // Clip to selection boundaries for partial text nodes
+      if (node === range.startContainer && node === range.endContainer) {
+        text = text.slice(range.startOffset, range.endOffset);
+      } else if (node === range.startContainer) {
+        text = text.slice(range.startOffset);
+      } else if (node === range.endContainer) {
+        text = text.slice(0, range.endOffset);
+      }
       return text.replace(/[ \t]+/g, ' ');
     }
 
@@ -1051,88 +1083,58 @@ class LexisToolbar {
 
     const tag = node.tagName.toLowerCase();
 
-    // Skip elements that carry no readable content
+    // Skip non-content elements
     if (['script', 'style', 'noscript', 'iframe', 'svg', 'canvas',
-         'button', 'input', 'select', 'textarea', 'nav', 'header',
-         'footer', 'aside', 'figure', 'figcaption'].includes(tag)) {
-      return '';
-    }
+         'button', 'input', 'select', 'textarea'].includes(tag)) return '';
 
-    // Self-closing/simple block elements
     if (tag === 'br') return '<br>';
     if (tag === 'hr') return '<hr>';
     if (tag === 'img') return '';
 
-    // Detect inline formatting from tag name AND inline style attribute
-    const inlineStyle = (node.getAttribute ? (node.getAttribute('style') || '') : '').toLowerCase();
-    const isBold = ['b', 'strong'].includes(tag)
-      || /font-weight\s*:\s*(bold|[6-9]\d{2})/.test(inlineStyle);
-    const isItalic = ['i', 'em'].includes(tag)
-      || /font-style\s*:\s*italic/.test(inlineStyle);
-    const isCode = ['code', 'kbd', 'samp', 'tt'].includes(tag)
-      || /font-family[^;]*(mono|courier|consolas|inconsolata|source.?code|fira.?code)/i.test(inlineStyle);
-    const isStrike = ['s', 'strike', 'del'].includes(tag)
-      || /text-decoration[^;]*line-through/.test(inlineStyle);
+    // Use getComputedStyle on the LIVE node — captures CSS-class formatting too
+    const cs = window.getComputedStyle(node);
+    const fw = parseInt(cs.fontWeight) || 400;
+    const isBold = fw >= 600;
+    const isItalic = cs.fontStyle === 'italic' || cs.fontStyle === 'oblique';
+    const ff = cs.fontFamily.toLowerCase();
+    const isCode = /mono|courier|consolas|menlo|fira|source.?code|inconsolata|roboto.?mono|cascadia|lucida.?console/i.test(ff);
+    const isStrike = cs.textDecoration.includes('line-through');
     const isMark = tag === 'mark';
 
-    // Recurse into children
-    const children = [...node.childNodes].map(c => this.processNode(c)).join('');
+    const children = [...node.childNodes]
+      .map(c => this.walkLiveNode(c, range))
+      .join('');
 
-    // --- Block-level elements ---
+    if (!children.trim()) return '';
 
-    // Headings
-    if (/^h[1-6]$/.test(tag)) {
-      const level = tag[1];
-      const text = children.trim();
-      return text ? `<h${level}>${text}</h${level}>\n` : '';
-    }
+    // --- Block elements → semantic equivalents ---
+    if (/^h[1-6]$/.test(tag)) return `<h${tag[1]}>${children.trim()}</h${tag[1]}>\n`;
 
-    // Paragraphs and generic blocks → <p>
     if (['p', 'div', 'section', 'article', 'main', 'address'].includes(tag)) {
-      const text = children.trim();
-      return text ? `<p>${text}</p>\n` : '\n';
+      const t = children.trim();
+      return t ? `<p>${t}</p>\n` : '\n';
     }
 
-    // Preformatted / code blocks → preserve whitespace
-    if (['pre', 'xmp'].includes(tag)) {
-      const rawText = node.textContent;
-      const escaped = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      return `<pre><code>${escaped}</code></pre>\n`;
+    if (tag === 'pre' || tag === 'xmp') {
+      // textContent preserves whitespace; escape it
+      let raw = '';
+      this.walkTextInRange(node, range, txt => { raw += txt; });
+      const esc = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<pre><code>${esc}</code></pre>\n`;
     }
 
-    // Lists
-    if (tag === 'ul') return children.trim() ? `<ul>${children}</ul>\n` : '';
-    if (tag === 'ol') return children.trim() ? `<ol>${children}</ol>\n` : '';
-    if (tag === 'li') {
-      const text = children.trim();
-      return text ? `<li>${text}</li>` : '';
-    }
+    if (tag === 'ul') return `<ul>${children}</ul>\n`;
+    if (tag === 'ol') return `<ol>${children}</ol>\n`;
+    if (tag === 'li') return `<li>${children.trim()}</li>`;
+    if (tag === 'blockquote') return `<blockquote>${children.trim()}</blockquote>\n`;
+    if (tag === 'td' || tag === 'th') return children.trim() ? `<p>${children.trim()}</p>\n` : '';
+    if (['table', 'thead', 'tbody', 'tfoot', 'tr', 'colgroup', 'col', 'caption'].includes(tag)) return children;
+    if (tag === 'dl') return `<ul>${children}</ul>\n`;
+    if (tag === 'dt') return `<li><strong>${children.trim()}</strong></li>`;
+    if (tag === 'dd') return `<li>${children.trim()}</li>`;
 
-    // Blockquote
-    if (tag === 'blockquote') {
-      const text = children.trim();
-      return text ? `<blockquote>${text}</blockquote>\n` : '';
-    }
-
-    // Table cells — flatten to paragraphs with spacing
-    if (tag === 'td' || tag === 'th') {
-      const text = children.trim();
-      return text ? `<p>${text}</p>\n` : '';
-    }
-    if (['table', 'thead', 'tbody', 'tfoot', 'tr', 'caption', 'colgroup', 'col'].includes(tag)) {
-      return children;
-    }
-
-    // Definition lists
-    if (tag === 'dl') return children.trim() ? `<ul>${children}</ul>\n` : '';
-    if (tag === 'dt') return children.trim() ? `<li><strong>${children.trim()}</strong></li>` : '';
-    if (tag === 'dd') return children.trim() ? `<li>${children.trim()}</li>` : '';
-
-    // --- Inline elements ---
-
+    // --- Inline elements — apply detected formatting ---
     let result = children;
-
-    // Apply formatting in correct nesting order
     if (isMark) result = `<mark>${result}</mark>`;
     if (isStrike) result = `<s>${result}</s>`;
     if (isCode) result = `<code>${result}</code>`;
@@ -1141,29 +1143,118 @@ class LexisToolbar {
       if (isBold) result = `<strong>${result}</strong>`;
     }
 
-    // Links — keep href but nothing else
     if (tag === 'a') {
-      const href = node.getAttribute ? node.getAttribute('href') : '';
+      const href = node.getAttribute('href') || '';
       if (href && !/^javascript:/i.test(href)) {
         return `<a href="${href.replace(/"/g, '&quot;')}">${result}</a>`;
       }
       return result;
     }
-
-    // Abbreviations
     if (tag === 'abbr') {
-      const title = node.getAttribute ? node.getAttribute('title') : '';
-      return title
-        ? `<abbr title="${title.replace(/"/g, '&quot;')}">${result}</abbr>`
-        : result;
+      const title = node.getAttribute('title') || '';
+      return title ? `<abbr title="${title.replace(/"/g, '&quot;')}">${result}</abbr>` : result;
     }
-
-    // Superscript / subscript
     if (tag === 'sup') return `<sup>${result}</sup>`;
     if (tag === 'sub') return `<sub>${result}</sub>`;
 
-    // All other inline wrappers (span, etc.) — just return children with any detected formatting
     return result;
+  }
+
+  // Walk text content within range for <pre> blocks
+  walkTextInRange(node, range, callback) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (!range.intersectsNode(node)) return;
+      let text = node.textContent;
+      if (node === range.startContainer) text = text.slice(range.startOffset);
+      if (node === range.endContainer) text = text.slice(0, range.endOffset);
+      callback(text);
+    } else {
+      for (const child of node.childNodes) {
+        if (range.intersectsNode(child)) this.walkTextInRange(child, range, callback);
+      }
+    }
+  }
+
+  /**
+   * Apply a CSS Custom Highlight on the page for a saved highlight.
+   * Uses the CSS Highlight API (Chrome 105+) — no DOM mutation.
+   */
+  applyPageHighlight(range, id) {
+    if (!CSS.highlights) return;
+    try {
+      const cloned = range.cloneRange();
+      this.savedRanges.set(id, cloned);
+      this._updateCssHighlight();
+    } catch (e) {}
+  }
+
+  _updateCssHighlight() {
+    if (!CSS.highlights) return;
+    if (this.savedRanges.size === 0) {
+      CSS.highlights.delete('lexis-saved');
+    } else {
+      CSS.highlights.set('lexis-saved', new Highlight(...this.savedRanges.values()));
+    }
+  }
+
+  /**
+   * Restore a visual CSS highlight by searching for highlight.text
+   * within the element found by XPath.
+   */
+  restorePageHighlight(highlight) {
+    if (!CSS.highlights) return;
+    if (!highlight.xpath) return;
+    try {
+      const result = document.evaluate(highlight.xpath, document, null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+      const el = result.singleNodeValue;
+      if (!el) return;
+
+      const range = this.findTextRange(el, highlight.text);
+      if (range) {
+        this.savedRanges.set(highlight.id, range);
+        this._updateCssHighlight();
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * Search el's text nodes for searchText and return a Range covering it.
+   */
+  findTextRange(el, searchText) {
+    if (!searchText) return null;
+    const needle = searchText.trim().slice(0, 100); // match on first 100 chars
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let fullText = '';
+    while (walker.nextNode()) {
+      nodes.push({ node: walker.currentNode, start: fullText.length });
+      fullText += walker.currentNode.textContent;
+    }
+
+    const idx = fullText.indexOf(needle);
+    if (idx === -1) return null;
+
+    const end = idx + needle.length;
+    let startNode = null, startOff = 0, endNode = null, endOff = 0;
+    for (const { node, start } of nodes) {
+      const nodeEnd = start + node.textContent.length;
+      if (!startNode && nodeEnd > idx) {
+        startNode = node;
+        startOff = idx - start;
+      }
+      if (startNode && nodeEnd >= end) {
+        endNode = node;
+        endOff = end - start;
+        break;
+      }
+    }
+
+    if (!startNode || !endNode) return null;
+    const range = document.createRange();
+    range.setStart(startNode, startOff);
+    range.setEnd(endNode, endOff);
+    return range;
   }
 }
 
@@ -1193,6 +1284,16 @@ style.textContent = `
       transform: translateX(100%);
       opacity: 0;
     }
+  }
+
+  /* CSS Custom Highlight for saved highlights — no DOM mutation */
+  ::highlight(lexis-saved) {
+    background-color: rgba(16, 185, 129, 0.22);
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: rgba(16, 185, 129, 0.6);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
   }
 `;
 document.head.appendChild(style);
