@@ -712,23 +712,17 @@ async function createDescription(selectedText, sourceUrl, sourceTitle, promptId,
  * @param {string} sourceUrl - The URL where text was selected
  * @param {string} sourceTitle - The page title where text was selected
  */
-async function saveToNotebook(selectedText, sourceUrl, sourceTitle, htmlText = '') {
+async function saveToNotebook(selectedText, sourceUrl, sourceTitle, htmlText = '', xpath = '', position = null) {
   if (!selectedText || selectedText.trim() === '') {
     showNotification('Error', 'No text selected', 'error');
-    return;
+    return null;
   }
 
-  // Truncate if too long (allow longer text for simple saves)
   const text = selectedText.length > 5000
     ? selectedText.substring(0, 5000)
     : selectedText;
 
-  if (selectedText.length > 5000) {
-    console.warn('Selection truncated to 5000 characters');
-  }
-
   try {
-    // Save to highlights without description
     const highlight = {
       text: text.trim(),
       sourceUrl: sourceUrl,
@@ -737,9 +731,9 @@ async function saveToNotebook(selectedText, sourceUrl, sourceTitle, htmlText = '
       createdAt: Date.now()
     };
 
-    if (htmlText) {
-      highlight.htmlText = htmlText;
-    }
+    if (htmlText) highlight.htmlText = htmlText;
+    if (xpath) highlight.xpath = xpath;
+    if (position) highlight.position = position;
 
     const saved = await Storage.addHighlight(highlight);
 
@@ -747,22 +741,17 @@ async function saveToNotebook(selectedText, sourceUrl, sourceTitle, htmlText = '
       throw new Error('Failed to save highlight');
     }
 
-    // Show success notification
     showNotification(
       'Saved to Notebook',
       `Successfully saved "${truncateText(text, 30)}"`,
       'success'
     );
 
-    console.log('Highlight saved:', highlight);
+    return highlight.id || null;
   } catch (error) {
     console.error('Error saving to notebook:', error);
-
-    showNotification(
-      'Error',
-      `Failed to save to notebook: ${error.message}`,
-      'error'
-    );
+    showNotification('Error', `Failed to save to notebook: ${error.message}`, 'error');
+    return null;
   }
 }
 
@@ -1073,8 +1062,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // Toolbar action: Save highlight
   if (request.action === 'saveHighlight') {
-    saveToNotebook(request.text, request.sourceUrl, request.sourceTitle, request.htmlText || '')
-      .then(() => sendResponse({ success: true }))
+    saveToNotebook(request.text, request.sourceUrl, request.sourceTitle, request.htmlText || '', request.xpath || '', request.position || null)
+      .then(highlightId => sendResponse({ success: true, highlightId }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
@@ -1114,10 +1103,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'getHighlightsForUrl') {
     Storage.getHighlights()
       .then(highlights => {
-        // Filter highlights for this URL that have xpath or position data
+        // Return all highlights for this URL that have position data (both simple and described)
         const urlHighlights = highlights.filter(h =>
           h.sourceUrl === request.url &&
-          h.type === 'described' &&
           (h.xpath || h.position)
         );
         sendResponse({ success: true, highlights: urlHighlights });
