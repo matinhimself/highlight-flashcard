@@ -1531,3 +1531,106 @@ body {
         box-shadow: none !important;
     }
 }
+
+/* Ask AI Panel in Highlight Detail Modal */
+.detail-ask-ai {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--dark-border);
+    padding-top: 1.5rem;
+}
+
+.detail-section-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+.ask-ai-messages {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 4px 0;
+}
+
+.ask-ai-message {
+    max-width: 85%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.ask-ai-message.user {
+    background: rgba(16, 185, 129, 0.18);
+    color: var(--text-primary);
+    align-self: flex-end;
+    border-bottom-right-radius: 3px;
+}
+
+.ask-ai-message.ai {
+    background: var(--dark-bg);
+    border: 1px solid var(--dark-border);
+    color: var(--text-secondary);
+    align-self: flex-start;
+    border-bottom-left-radius: 3px;
+}
+
+.ask-ai-typing {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 4px 0;
+}
+
+.ask-ai-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.ask-ai-input {
+    flex: 1;
+    background: var(--dark-bg);
+    border: 1px solid var(--dark-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.ask-ai-input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+}
+
+.ask-ai-send-btn {
+    background: var(--primary-green);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.ask-ai-send-btn:hover {
+    background: var(--primary-green-hover);
+}
+
+.ask-ai-send-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}

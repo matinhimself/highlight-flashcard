@@ -117,18 +117,6 @@ function buildHighlightDetails(highlight) {
   }
   html += '</div>';
 
-  // Chat panel
-  html += `
-    <div class="item-chat">
-      <div class="chat-label">Ask AI about this highlight</div>
-      <div class="chat-messages"></div>
-      <div class="chat-input-row">
-        <input type="text" class="chat-input" placeholder="Ask a question..." maxlength="300">
-        <button class="chat-send-btn" title="Send">→</button>
-      </div>
-    </div>
-  `;
-
   return html;
 }
 
@@ -226,11 +214,6 @@ function attachItemListeners() {
     });
   });
 
-  // Chat send buttons (event delegation on the lists)
-  [flashcardsList, highlightsList].forEach(list => {
-    list.addEventListener('keydown', handleChatKeydown);
-    list.addEventListener('click', handleChatSend);
-  });
 }
 
 /**
@@ -240,83 +223,6 @@ function toggleItemExpanded(item) {
   const isExpanded = item.dataset.expanded === 'true';
   item.dataset.expanded = isExpanded ? 'false' : 'true';
   item.classList.toggle('expanded', !isExpanded);
-}
-
-/**
- * Handle Enter key in chat inputs
- */
-function handleChatKeydown(e) {
-  if (e.key === 'Enter' && e.target.classList.contains('chat-input')) {
-    const item = e.target.closest('.list-item');
-    if (item) sendChatMessage(item, e.target);
-  }
-}
-
-/**
- * Handle click on chat send buttons
- */
-function handleChatSend(e) {
-  if (e.target.closest('.chat-send-btn')) {
-    const item = e.target.closest('.list-item');
-    const input = item ? item.querySelector('.chat-input') : null;
-    if (item && input) sendChatMessage(item, input);
-  }
-}
-
-/**
- * Send a chat message about a highlight
- */
-async function sendChatMessage(item, input) {
-  const question = input.value.trim();
-  if (!question) return;
-
-  const highlightId = item.dataset.id;
-  const messagesContainer = item.querySelector('.chat-messages');
-  const sendBtn = item.querySelector('.chat-send-btn');
-
-  // Show user message
-  appendChatMessage(messagesContainer, question, 'user');
-  input.value = '';
-  sendBtn.disabled = true;
-
-  // Show typing indicator
-  const typing = document.createElement('div');
-  typing.className = 'chat-typing';
-  typing.textContent = 'Thinking…';
-  messagesContainer.appendChild(typing);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-  try {
-    const response = await chrome.runtime.sendMessage({
-      action: 'chatAboutHighlight',
-      highlightId,
-      question
-    });
-
-    typing.remove();
-
-    if (response && response.success) {
-      appendChatMessage(messagesContainer, response.answer, 'ai');
-    } else {
-      appendChatMessage(messagesContainer, response?.error || 'Failed to get a response.', 'ai');
-    }
-  } catch (err) {
-    typing.remove();
-    appendChatMessage(messagesContainer, 'Could not reach the AI. Check your API key.', 'ai');
-  }
-
-  sendBtn.disabled = false;
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-/**
- * Append a chat message bubble
- */
-function appendChatMessage(container, text, role) {
-  const msg = document.createElement('div');
-  msg.className = `chat-message ${role}`;
-  msg.innerHTML = `<span class="chat-bubble">${escapeHtml(text)}</span>`;
-  container.appendChild(msg);
 }
 
 /**
@@ -418,8 +324,6 @@ function switchTab(tab) {
 }
 
 function setupEventListeners() {
-  document.getElementById('settingsBtn').addEventListener('click', () => chrome.runtime.openOptionsPage());
-
   document.querySelectorAll('.popup-tab').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
@@ -487,40 +391,13 @@ function setupMessageListener() {
 }
 
 function updateLoadingProgress(step, status, text = '') {
-  if (loadingModal.classList.contains('hidden')) {
-    loadingModal.classList.remove('hidden');
-  }
-
-  for (let i = 1; i <= 3; i++) {
-    const stepElement = document.getElementById(`step${i}`);
-    stepElement.classList.remove('active', 'completed');
-    if (i < step) {
-      stepElement.classList.add('completed');
-    } else if (i === step) {
-      stepElement.classList.add(status);
-    }
-  }
-
-  if (step === 1) {
-    document.querySelector('#step1 .step-status').textContent = status === 'active' ? 'Preparing…' : 'Ready';
-  } else if (step === 2) {
-    document.querySelector('#step2 .step-status').textContent = status === 'active' ? 'Generating…' : (status === 'completed' ? 'Done' : 'Waiting…');
-  } else if (step === 3) {
-    document.querySelector('#step3 .step-status').textContent = status === 'active' ? 'Saving…' : (status === 'completed' ? 'Saved!' : 'Waiting…');
-  }
-
-  if (text) {
-    document.getElementById('loadingText').textContent = text;
-  }
+  loadingModal.classList.remove('hidden');
+  if (text) document.getElementById('loadingTitle').textContent = text;
 }
 
 function hideLoadingModal() {
   loadingModal.classList.add('hidden');
-  for (let i = 1; i <= 3; i++) {
-    const stepElement = document.getElementById(`step${i}`);
-    stepElement.classList.remove('active', 'completed');
-  }
-  document.getElementById('loadingText').textContent = '';
+  document.getElementById('loadingTitle').textContent = 'Processing...';
 }
 
 function openStudyHub(tab = 'flashcards') {
