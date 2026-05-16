@@ -337,7 +337,7 @@ function createHighlightElement(highlight) {
       </div>
     </div>
     <div class="highlight-content">
-      <div class="highlight-text">${escapeHtml(highlight.text)}</div>
+      <div class="highlight-text${highlight.htmlText ? ' highlight-styled-text' : ''}">${highlight.htmlText ? highlight.htmlText : escapeHtml(highlight.text)}</div>
       ${descriptionHtml}
       ${tagsHtml}
     </div>

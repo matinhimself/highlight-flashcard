@@ -333,6 +333,7 @@ class LexisToolbar {
       const response = await chrome.runtime.sendMessage({
         action: 'describeWithPrompt',
         text: this.selectedText,
+        htmlText: this.getSelectionHtml(),
         sourceUrl: window.location.href,
         sourceTitle: document.title,
         promptId: promptId,
@@ -760,11 +761,14 @@ class LexisToolbar {
   async saveHighlight(button) {
     button.classList.add('loading');
 
+    const htmlText = this.getSelectionHtml();
+
     try {
       // Send message to background script to save highlight
       const response = await chrome.runtime.sendMessage({
         action: 'saveHighlight',
         text: this.selectedText,
+        htmlText,
         sourceUrl: window.location.href,
         sourceTitle: document.title
       });
@@ -1016,6 +1020,28 @@ class LexisToolbar {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  getSelectionHtml() {
+    if (!this.selectionRange) return '';
+    try {
+      const fragment = this.selectionRange.cloneContents();
+      const div = document.createElement('div');
+      div.appendChild(fragment);
+      div.querySelectorAll('script, style, iframe, object, embed').forEach(el => el.remove());
+      div.querySelectorAll('*').forEach(el => {
+        [...el.attributes].forEach(attr => {
+          if (attr.name.startsWith('on') ||
+              (attr.name === 'href' && /^javascript:/i.test(attr.value)) ||
+              attr.name === 'src') {
+            el.removeAttribute(attr.name);
+          }
+        });
+      });
+      return div.innerHTML;
+    } catch (e) {
+      return '';
+    }
   }
 }
 
